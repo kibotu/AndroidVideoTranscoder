@@ -87,6 +87,8 @@ dependencies {
 
     implementation libs.parceler
     kapt libs.parcelerProcessor
+
+    implementation 'com.writingminds:FFmpegAndroid:0.3.2'
 }
 
 configurations.all {
