@@ -2,25 +2,32 @@ package com.exozet.videoeditor
 
 import android.content.Context
 import android.util.Log
+import io.reactivex.Observable
 import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
 import nl.bravobit.ffmpeg.FFmpeg
 import java.io.File
 
-class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
+class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     // todo : cache folder possible?
-    val internalStoragePath = context.filesDir.path
+    private val internalStoragePath: String = context.filesDir.path
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
     var ffmpeg = FFmpeg.getInstance(context)
 
     //extract frames from video
-    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) {
+    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) = Observable.create<String> {
+        emitter ->
+
+        if (emitter.isDisposed) {
+            return@create
+        }
 
         val savePath = "$internalStoragePath/postProcess/${System.currentTimeMillis()}/"
         val saveName = fileName.substring(0, fileName.lastIndexOf("."))
 
+        //create new folder
         File(savePath).mkdirs()
 
         var selectedTimePoints = "select='"
@@ -41,36 +48,65 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
          */
         val cmd = arrayOf("-i", "$inputPath/$fileName", "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "$savePath${saveName}_%03d.jpg")
 
-        Log.d(TAG, "list = $selectedTimePoints")
-
         ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
             override fun onFailure(result: String?) {
-                Log.d(TAG, "FAIL with output : $result")
+                loge("FAIL with output : $result")
+                emitter.onError(Throwable(result))
             }
 
             override fun onSuccess(result: String?) {
-                Log.d(TAG, "SUCCESS with output : $result")
+                log("SUCCESS with output : $result")
 
                 //create video from frames
-                createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps)
+                createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps, object : ExecuteBinaryResponseHandler() {
+                    override fun onFailure(result: String?) {
+                        loge("FAIL create video with output : $result")
+                        emitter.onError(Throwable(result))
+                    }
+
+                    override fun onSuccess(result: String?) {
+                        log("SUCCESS create video with output : $result")
+                        result?.let { emitter.onNext("Video process completed") }
+                    }
+
+                    override fun onProgress(progress: String?) {
+                        log("Started command create video : ffmpeg $cmd")
+                        log("progress create video : $progress")
+
+                        //todo: update progress
+                        progress?.let { emitter.onNext("making video process continues") }
+                    }
+
+                    override fun onStart() {
+                        log("Started command create video : ffmpeg $cmd")
+                    }
+
+                    override fun onFinish() {
+                        log("Finished command create video: ffmpeg $cmd")
+                        //delete temp files
+                        val deleteStatus = deleteFolder(savePath)
+                        Log.d(TAG,"Delete temp frame save path status: $deleteStatus")
+                        emitter.onComplete()
+                    }
+                })
             }
 
             override fun onProgress(progress: String?) {
-                Log.d(TAG, "Started command : ffmpeg $cmd")
-                Log.d(TAG, "progress : $progress")
+                log("progress : $progress")
+                progress?.let { emitter.onNext("extract image process continues") }
             }
 
             override fun onStart() {
-                Log.d(TAG, "Started command : ffmpeg $cmd")
+                log("Started command : ffmpeg $cmd")
             }
 
             override fun onFinish() {
-                Log.d(TAG, "Finished command : ffmpeg $cmd")
+                log("Finished command : ffmpeg $cmd")
             }
         })
     }
 
-    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int) {
+    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int , handler : ExecuteBinaryResponseHandler) {
 
         /**
          * -i : input
@@ -80,29 +116,14 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
          */
         val cmd = arrayOf("-framerate", "$fps", "-i", "$savePath${saveName}_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputPath)
 
-        ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
-            override fun onFailure(result: String?) {
-                Log.d(TAG, "FAIL create video with output : $result")
-            }
+        ffmpeg.execute(cmd, handler)
+    }
 
-            override fun onSuccess(result: String?) {
-                Log.d(TAG, "SUCCESS create video with output : $result")
-            }
+    private fun deleteFolder(path: String): Boolean{
+        val someDir = File(path)
 
-            override fun onProgress(progress: String?) {
-                Log.d(TAG, "Started command create video : ffmpeg $cmd")
-                Log.d(TAG, "progress create video : $progress")
-            }
-
-            override fun onStart() {
-                Log.d(TAG, "Started command create video : ffmpeg $cmd")
-            }
-
-            override fun onFinish() {
-                Log.d(TAG, "Finished command create video: ffmpeg $cmd")
-            }
-        })
-
+        //todo:is this method async or sync
+        return someDir.deleteRecursively()
     }
 
 

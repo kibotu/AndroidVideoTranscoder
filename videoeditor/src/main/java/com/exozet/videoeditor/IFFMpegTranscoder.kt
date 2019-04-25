@@ -1,7 +1,8 @@
 package com.exozet.videoeditor
 
-interface IFFMpegTranscoder {
+import io.reactivex.Observable
 
+interface IFFMpegTranscoder {
 
     /**
      * inputPath: path of the source video
@@ -12,6 +13,6 @@ interface IFFMpegTranscoder {
      * fps: requested video frame rate
      * frameTimes : ms of the requested frames at source video - example "1.023"
      */
-    fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int = 2, videoQuality: Int = 18, fps : Int = 3, frameTimes : List<String>)
+    fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int = 2, videoQuality: Int = 18, fps: Int = 3, frameTimes: List<String>): Observable<String>
 
 }
