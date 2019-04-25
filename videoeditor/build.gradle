@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
 
-        minSdkVersion minSdkVer
+        minSdkVersion 16
         targetSdkVersion targetSdkVer
         versionCode 1
         versionName "1.0"
@@ -88,7 +88,7 @@ dependencies {
     implementation libs.parceler
     kapt libs.parcelerProcessor
 
-    implementation 'com.writingminds:FFmpegAndroid:0.3.2'
+    implementation 'nl.bravobit:android-ffmpeg:1.1.5'
 }
 
 configurations.all {

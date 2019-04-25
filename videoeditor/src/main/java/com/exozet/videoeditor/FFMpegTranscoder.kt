@@ -2,11 +2,8 @@ package com.exozet.videoeditor
 
 import android.content.Context
 import android.util.Log
-import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler
-import com.github.hiteshsondhi88.libffmpeg.FFmpeg
-import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler
-import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException
-import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException
+import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
+import nl.bravobit.ffmpeg.FFmpeg
 import java.io.File
 
 class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
@@ -18,10 +15,6 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
 
     var ffmpeg = FFmpeg.getInstance(context)
 
-    init {
-        loadFFMpegBinary()
-    }
-
     override fun extractFramesFromVideo(inputPath: String, fileName: String, outputPath: String) {
 
         val savePath = "$internalStoragePath/postProcess/${System.currentTimeMillis()}/"
@@ -29,9 +22,9 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
 
         File(savePath).mkdirs()
 
-        val cmd = arrayOf("-i", "$inputPath/$fileName", "-vf", "scale=1280:-1,fps=2", "$savePath$saveName%03d.jpg")
+        val cmd = arrayOf("-i", "$inputPath/$fileName", "-vf", "fps=2","-qscale:v", "2", "$savePath$saveName%03d.jpg")
 
-        execFFmpegBinary(cmd, object : ExecuteBinaryResponseHandler() {
+        ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
             override fun onFailure(result: String?) {
                 Log.d(TAG, "FAIL with output : $result")
             }
@@ -60,9 +53,9 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
 
     override fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String) {
 
-        val cmd = arrayOf("-framerate", "3", "-i", "$savePath/$saveName%03d.jpg", "-pix_fmt", "yuv420p", outputPath)
+        val cmd = arrayOf("-framerate", "3", "-i", "$savePath/$saveName%03d.jpg","-crf", "18", "-pix_fmt", "yuv420p", outputPath)
 
-        execFFmpegBinary(cmd, object : ExecuteBinaryResponseHandler() {
+        ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
             override fun onFailure(result: String?) {
                 Log.d(TAG, "FAIL create video with output : $result")
             }
@@ -87,32 +80,6 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
 
     }
 
-    private fun loadFFMpegBinary() {
-        try {
-            ffmpeg.loadBinary(object : LoadBinaryResponseHandler() {
-                override fun onFailure() {
-                    Log.e(TAG, "FAILED load binary")
-                }
-
-                override fun onSuccess() {
-                    Log.d(TAG, "SUCCESS load binary")
-                    super.onSuccess()
-                }
-            })
-        } catch (e: FFmpegNotSupportedException) {
-            loge("NOT Supported exception ${e.message}")
-        }
-
-    }
-
-    private fun execFFmpegBinary(command: Array<String>, processListener: ExecuteBinaryResponseHandler) {
-        try {
-            ffmpeg.execute(command, processListener)
-        } catch (e: FFmpegCommandAlreadyRunningException) {
-            // do nothing for now
-        }
-
-    }
 
 
 }

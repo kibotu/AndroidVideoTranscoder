@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         make_video.setOnClickListener {
-            ffMpegTranscoder.extractFramesFromVideo(path,"SampleVideo_1280x720_10mb.mp4","${path}/output${System.currentTimeMillis()}.mp4")
+            ffMpegTranscoder.extractFramesFromVideo(path,"test.mp4","${path}/output_${System.currentTimeMillis()}.mp4")
         }
 
 
