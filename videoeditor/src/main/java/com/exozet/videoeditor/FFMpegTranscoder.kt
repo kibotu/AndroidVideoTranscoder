@@ -15,14 +15,33 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
 
     var ffmpeg = FFmpeg.getInstance(context)
 
-    override fun extractFramesFromVideo(inputPath: String, fileName: String, outputPath: String) {
+    //extract frames from video
+    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) {
 
         val savePath = "$internalStoragePath/postProcess/${System.currentTimeMillis()}/"
         val saveName = fileName.substring(0, fileName.lastIndexOf("."))
 
         File(savePath).mkdirs()
 
-        val cmd = arrayOf("-i", "$inputPath/$fileName", "-vf", "fps=2","-qscale:v", "2", "$savePath$saveName%03d.jpg")
+        var selectedTimePoints = "select='"
+
+        frameTimes.forEach {
+            selectedTimePoints += "lt(prev_pts*TB\\,$it)*gte(pts*TB\\,$it)+"
+        }
+
+        selectedTimePoints = selectedTimePoints.substring(0, selectedTimePoints.length - 1)
+        selectedTimePoints += "'"
+
+        /**
+         * -i : input
+         * -vf : filter_graph set video filters
+         * -filter:v : video filter for gived parameters - like requested frame times
+         * -qscale:v :quality parameter
+         * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works
+         */
+        val cmd = arrayOf("-i", "$inputPath/$fileName", "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "$savePath${saveName}_%03d.jpg")
+
+        Log.d(TAG, "list = $selectedTimePoints")
 
         ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
             override fun onFailure(result: String?) {
@@ -33,7 +52,7 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
                 Log.d(TAG, "SUCCESS with output : $result")
 
                 //create video from frames
-                createVideoFromFrames(savePath, saveName, outputPath)
+                createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps)
             }
 
             override fun onProgress(progress: String?) {
@@ -51,9 +70,15 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
         })
     }
 
-    override fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String) {
+    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int) {
 
-        val cmd = arrayOf("-framerate", "3", "-i", "$savePath/$saveName%03d.jpg","-crf", "18", "-pix_fmt", "yuv420p", outputPath)
+        /**
+         * -i : input
+         * -framerate : frame rate of the video
+         * -crf quality of the output video
+         * -pix_fmt pixel format
+         */
+        val cmd = arrayOf("-framerate", "$fps", "-i", "$savePath${saveName}_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputPath)
 
         ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
             override fun onFailure(result: String?) {
@@ -79,7 +104,6 @@ class FFMpegTranscoder(val context: Context) : IFFMpegTranscoder {
         })
 
     }
-
 
 
 }

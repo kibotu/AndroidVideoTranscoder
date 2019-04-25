@@ -26,8 +26,10 @@ class MainActivity : AppCompatActivity() {
             ffMpegTranscoder = FFMpegTranscoder(this)
         }
 
+        val times = listOf("0.002","0.102","0.202","0.502","0.702","1.002","1.202","1.502","1.702","2.052","3.402")
+
         make_video.setOnClickListener {
-            ffMpegTranscoder.extractFramesFromVideo(path,"test.mp4","${path}/output_${System.currentTimeMillis()}.mp4")
+            ffMpegTranscoder.createVideo(path,"test.mp4","${path}/output_${System.currentTimeMillis()}.mp4",2,18,1,times)
         }
 
 
