@@ -17,6 +17,10 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     var ffmpeg = FFmpeg.getInstance(context)
 
     //extract frames from video
+
+    /**
+     * {@inheritDoc}
+     */
     override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) = Observable.create<String> {
         emitter ->
 
@@ -106,6 +110,9 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         })
     }
 
+    /**
+     * {@inheritDoc}
+     */
     private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int , handler : ExecuteBinaryResponseHandler) {
 
         /**
