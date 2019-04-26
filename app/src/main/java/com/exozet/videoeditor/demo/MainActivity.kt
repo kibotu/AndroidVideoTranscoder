@@ -62,17 +62,29 @@ class MainActivity : AppCompatActivity() {
                 "3.002", "3.102", "3.202", "3.502", "3.702", "3.752", "3.802", "3.852", "3.902", "3.952", "3.982",
                 "4.002", "4.102", "4.202", "4.502", "4.702", "4.752", "4.802", "4.852", "4.902", "4.952", "4.982",
                 "5.002", "5.102", "5.202", "5.502", "5.702", "5.752", "5.802", "5.852", "5.902", "5.952", "5.982"
-                )
+        )
 
         make_video.setOnClickListener {
             ffMpegTranscoder.createVideo(path, "test.mp4", "${path}/output_${System.currentTimeMillis()}.mp4", 5, 25, 3, smallTimes)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnError { Log.e(TAG, "fail ${it.message}") }
-                    .subscribe({ Log.d(TAG, "onComplete $it") }, { it.printStackTrace() })
+                    .subscribe({
+                        if (it.progress != null) {
+                            Log.d(TAG, "onProgress ${it.progress}")
+                            return@subscribe
+                        }
+
+                        if (it.message != null) {
+                            Log.d(TAG, "message ${it.message}")
+                        }
+                    }, { it.printStackTrace() })
                     .addTo(subscription)
         }
 
+        stop_process.setOnClickListener {
+            ffMpegTranscoder.stopAllProcesses()
+        }
 
     }
 

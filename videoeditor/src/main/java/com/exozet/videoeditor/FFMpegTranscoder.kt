@@ -3,26 +3,38 @@ package com.exozet.videoeditor
 import android.content.Context
 import android.util.Log
 import io.reactivex.Observable
+import io.reactivex.ObservableEmitter
 import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
 import nl.bravobit.ffmpeg.FFmpeg
+import nl.bravobit.ffmpeg.FFtask
 import java.io.File
 
 class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
-    // todo : cache folder possible?
     private val internalStoragePath: String = context.filesDir.path
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
     var ffmpeg = FFmpeg.getInstance(context)
 
-    //extract frames from video
+    var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
+    var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
 
+
+    data class MetaData (
+        var progress : String? = null,
+        var message : String? = null
+    )
+
+    //todo: add percentage calculation
+
+    //extract frames from video
     /**
      * {@inheritDoc}
      */
-    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) = Observable.create<String> {
-        emitter ->
+    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
+
+
 
         if (emitter.isDisposed) {
             return@create
@@ -52,7 +64,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          */
         val cmd = arrayOf("-i", "$inputPath/$fileName", "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "$savePath${saveName}_%03d.jpg")
 
-        ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+        val extractFrameTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+
             override fun onFailure(result: String?) {
                 loge("FAIL with output : $result")
                 emitter.onError(Throwable(result))
@@ -62,58 +75,80 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 log("SUCCESS with output : $result")
 
                 //create video from frames
-                createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps, object : ExecuteBinaryResponseHandler() {
-                    override fun onFailure(result: String?) {
-                        loge("FAIL create video with output : $result")
-                        emitter.onError(Throwable(result))
-                    }
-
-                    override fun onSuccess(result: String?) {
-                        log("SUCCESS create video with output : $result")
-                        result?.let { emitter.onNext("Video process completed") }
-                    }
-
-                    override fun onProgress(progress: String?) {
-                        log("Started command create video : ffmpeg $cmd")
-                        log("progress create video : $progress")
-
-                        //todo: update progress
-                        progress?.let { emitter.onNext("making video process continues") }
-                    }
-
-                    override fun onStart() {
-                        log("Started command create video : ffmpeg $cmd")
-                    }
-
-                    override fun onFinish() {
-                        log("Finished command create video: ffmpeg $cmd")
-                        //delete temp files
-                        val deleteStatus = deleteFolder(savePath)
-                        Log.d(TAG,"Delete temp frame save path status: $deleteStatus")
-                        emitter.onComplete()
-                    }
-                })
+                onExtractionSuccess(savePath, saveName, outputPath, videoQuality, fps, emitter, cmd)
             }
 
             override fun onProgress(progress: String?) {
                 log("progress : $progress")
-                progress?.let { emitter.onNext("extract image process continues") }
+                progress?.let { emitter.onNext(MetaData(progress)) }
             }
 
             override fun onStart() {
                 log("Started command : ffmpeg $cmd")
+                emitter.onNext(MetaData(message = "Started Command $cmd"))
             }
 
             override fun onFinish() {
                 log("Finished command : ffmpeg $cmd")
             }
         })
+        //add it to list so can stop them later
+        extractFrameTaskList.add(extractFrameTask)
     }
+
+    private fun onExtractionSuccess(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int, emitter: ObservableEmitter<MetaData>, cmd: Array<String>) {
+        createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps, object : ExecuteBinaryResponseHandler() {
+
+            override fun onFailure(result: String?) {
+                loge("FAIL create video with output : $result")
+                emitter.onError(Throwable(result))
+            }
+
+            override fun onSuccess(result: String?) {
+                log("SUCCESS create video with output : $result")
+                result?.let { emitter.onNext(MetaData(message = it)) }
+            }
+
+            override fun onProgress(progress: String?) {
+                log("Started command create video : ffmpeg $cmd")
+                log("progress create video : $progress")
+
+                //todo: update progress
+                progress?.let { emitter.onNext(MetaData(progress = it)) }
+            }
+
+            override fun onStart() {
+                log("Started command create video : ffmpeg $cmd")
+                emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
+            }
+
+            override fun onFinish() {
+                log("Finished command create video: ffmpeg $cmd")
+                //delete temp files
+                val deleteStatus = deleteFolder(savePath)
+                Log.d(TAG, "Delete temp frame save path status: $deleteStatus")
+                emitter.onComplete()
+            }
+        })
+    }
+
+    override fun stopAllProcesses() {
+        extractFrameTaskList.forEach {
+            it.sendQuitSignal()
+        }
+        extractFrameTaskList.clear()
+
+        createVideoTaskList.forEach {
+            it.sendQuitSignal()
+        }
+        createVideoTaskList.clear()
+    }
+
 
     /**
      * {@inheritDoc}
      */
-    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int , handler : ExecuteBinaryResponseHandler) {
+    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int, handler: ExecuteBinaryResponseHandler) {
 
         /**
          * -i : input
@@ -123,13 +158,14 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          */
         val cmd = arrayOf("-framerate", "$fps", "-i", "$savePath${saveName}_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputPath)
 
-        ffmpeg.execute(cmd, handler)
+        val createVideoTask = ffmpeg.execute(cmd, handler)
+        createVideoTaskList.add(createVideoTask)
     }
 
-    private fun deleteFolder(path: String): Boolean{
+    private fun deleteFolder(path: String): Boolean {
         val someDir = File(path)
 
-        //todo:is this method async or sync
+        //todo:make async - check the right folder removed
         return someDir.deleteRecursively()
     }
 

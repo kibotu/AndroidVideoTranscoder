@@ -14,5 +14,9 @@ interface IFFMpegTranscoder {
      * @param fps requested video frame rate
      * @param frameTimes  ms of the requested frames at source video - example "1.023"</pre>
      */
-    fun createVideo(inputPath: String, fileName: String, outputPath: String, @IntRange(from = 0, to = 31) photoQuality: Int = 2, videoQuality: Int = 18, fps: Int = 3, frameTimes: List<String>): Observable<String>
+    fun createVideo(inputPath: String, fileName: String, outputPath: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, @IntRange(from = 0, to = 51) videoQuality: Int = 18,
+                    @IntRange(from = 1, to = 60) fps: Int = 3,
+                    frameTimes: List<String>): Observable<FFMpegTranscoder.MetaData>
+
+    fun stopAllProcesses()
 }
