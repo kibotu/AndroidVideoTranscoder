@@ -1,9 +1,9 @@
 package com.exozet.videoeditor
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
 import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
 import nl.bravobit.ffmpeg.FFmpeg
 import nl.bravobit.ffmpeg.FFtask
@@ -15,36 +15,38 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
-    var ffmpeg = FFmpeg.getInstance(context)
+    private var ffmpeg = FFmpeg.getInstance(context)
 
-    var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
-    var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
+    private var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
+    private var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
 
 
-    data class MetaData (
-        var progress : String? = null,
-        var message : String? = null
+    data class MetaData(
+            var progress: String? = null,
+            var message: String? = null,
+            var uri: Uri? = null
     )
+
+    enum class PixelFormatType(type: String) {
+        YUV420P("yuv420p")
+    }
 
     //todo: add percentage calculation
 
-    //extract frames from video
-    /**
-     * {@inheritDoc}
-     */
-    override fun createVideo(inputPath: String, fileName: String, outputPath: String, photoQuality: Int, videoQuality: Int, fps: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
+    override fun extractFramesFromVideo(inputUri: Uri, carId: Long, photoQuality: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
 
-
+        val currentTime = System.currentTimeMillis()
 
         if (emitter.isDisposed) {
             return@create
         }
 
-        val savePath = "$internalStoragePath/postProcess/${System.currentTimeMillis()}/"
-        val saveName = fileName.substring(0, fileName.lastIndexOf("."))
+        val inputUriPath = inputUri.path
+
+        val localSavePath = "$internalStoragePath/postProcess/$carId/$currentTime/"
 
         //create new folder
-        File(savePath).mkdirs()
+        File(localSavePath).mkdirs()
 
         var selectedTimePoints = "select='"
 
@@ -58,11 +60,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         /**
          * -i : input
          * -vf : filter_graph set video filters
-         * -filter:v : video filter for gived parameters - like requested frame times
+         * -filter:v : video filter for given parameters - like requested frame times
          * -qscale:v :quality parameter
          * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works
          */
-        val cmd = arrayOf("-i", "$inputPath/$fileName", "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "$savePath${saveName}_%03d.jpg")
+        val cmd = arrayOf("-i", inputUriPath, "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "${localSavePath}image_%03d.jpg")
 
         val extractFrameTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
@@ -74,30 +76,48 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             override fun onSuccess(result: String?) {
                 log("SUCCESS with output : $result")
 
-                //create video from frames
-                onExtractionSuccess(savePath, saveName, outputPath, videoQuality, fps, emitter, cmd)
+                emitter.onNext(MetaData(uri = Uri.fromFile(File(localSavePath))))
             }
 
             override fun onProgress(progress: String?) {
                 log("progress : $progress")
-                progress?.let { emitter.onNext(MetaData(progress)) }
+                progress?.let {
+                    //todo: enable
+                   // emitter.onNext(MetaData(progress))
+                }
             }
 
             override fun onStart() {
                 log("Started command : ffmpeg $cmd")
-                emitter.onNext(MetaData(message = "Started Command $cmd"))
+                //todo: enable
+                //emitter.onNext(MetaData(message = "Started Command $cmd"))
             }
 
             override fun onFinish() {
                 log("Finished command : ffmpeg $cmd")
+                emitter.onComplete()
             }
         })
         //add it to list so can stop them later
         extractFrameTaskList.add(extractFrameTask)
     }
 
-    private fun onExtractionSuccess(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int, emitter: ObservableEmitter<MetaData>, cmd: Array<String>) {
-        createVideoFromFrames(savePath, saveName, outputPath, videoQuality, fps, object : ExecuteBinaryResponseHandler() {
+
+    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
+
+        if (emitter.isDisposed) {
+            return@create
+        }
+
+        /**
+         * -i : input
+         * -framerate : frame rate of the video
+         * -crf quality of the output video
+         * -pix_fmt pixel format
+         */
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputUri.path)
+
+        val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
             override fun onFailure(result: String?) {
                 loge("FAIL create video with output : $result")
@@ -106,7 +126,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
             override fun onSuccess(result: String?) {
                 log("SUCCESS create video with output : $result")
-                result?.let { emitter.onNext(MetaData(message = it)) }
+                result?.let { emitter.onNext(MetaData(message = outputUri.path)) }
             }
 
             override fun onProgress(progress: String?) {
@@ -114,22 +134,30 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 log("progress create video : $progress")
 
                 //todo: update progress
-                progress?.let { emitter.onNext(MetaData(progress = it)) }
+                //todo: enable
+                //progress?.let { emitter.onNext(MetaData(progress = it)) }
             }
 
             override fun onStart() {
                 log("Started command create video : ffmpeg $cmd")
-                emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
+                //todo: enable
+                //emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
             }
 
             override fun onFinish() {
                 log("Finished command create video: ffmpeg $cmd")
                 //delete temp files
-                val deleteStatus = deleteFolder(savePath)
-                Log.d(TAG, "Delete temp frame save path status: $deleteStatus")
+                if (deleteAfter) {
+                    val deleteStatus = deleteFolder(frameFolder.path!!)
+                    Log.d(TAG, "Delete temp frame save path status: $deleteStatus")
+                }
+
                 emitter.onComplete()
             }
         })
+        createVideoTaskList.add(createVideoTask)
+
+
     }
 
     override fun stopAllProcesses() {
@@ -144,30 +172,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         createVideoTaskList.clear()
     }
 
-
-    /**
-     * {@inheritDoc}
-     */
-    private fun createVideoFromFrames(savePath: String, saveName: String, outputPath: String, videoQuality: Int, fps: Int, handler: ExecuteBinaryResponseHandler) {
-
-        /**
-         * -i : input
-         * -framerate : frame rate of the video
-         * -crf quality of the output video
-         * -pix_fmt pixel format
-         */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "$savePath${saveName}_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputPath)
-
-        val createVideoTask = ffmpeg.execute(cmd, handler)
-        createVideoTaskList.add(createVideoTask)
-    }
-
     private fun deleteFolder(path: String): Boolean {
         val someDir = File(path)
 
         //todo:make async - check the right folder removed
         return someDir.deleteRecursively()
     }
-
 
 }

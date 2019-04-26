@@ -18,6 +18,17 @@
         />
 
     <Button
+        android:id="@+id/extract_frames"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Extract Images"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/init_ffmpeg"
+        />
+
+    <Button
         android:id="@+id/make_video"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -25,7 +36,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/init_ffmpeg"
+        app:layout_constraintTop_toBottomOf="@+id/extract_frames"
         />
 
     <Button
@@ -40,11 +51,13 @@
         />
 
     <ProgressBar
+        android:id="@+id/progress"
         android:layout_width="50dp"
         android:layout_height="50dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        android:visibility="invisible"
         />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

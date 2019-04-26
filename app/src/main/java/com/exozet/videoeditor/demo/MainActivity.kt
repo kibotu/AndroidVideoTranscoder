@@ -1,9 +1,12 @@
 package com.exozet.videoeditor.demo
 
+import android.net.Uri
+import android.opengl.Visibility
 import android.os.Bundle
 import android.os.Environment.DIRECTORY_DOWNLOADS
 import android.os.Environment.getExternalStoragePublicDirectory
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.exozet.videoeditor.FFMpegTranscoder
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -11,6 +14,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,14 +22,18 @@ class MainActivity : AppCompatActivity() {
 
     var subscription: CompositeDisposable = CompositeDisposable()
 
+    val downloadPath = getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS).absolutePath
 
     lateinit var ffMpegTranscoder: FFMpegTranscoder
+
+    lateinit var frameUri: Uri
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val path = getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS).absolutePath
+
+        var uri = Uri.parse("$downloadPath/test.mp4")
 
         // init FFMpeg object
 
@@ -64,22 +72,41 @@ class MainActivity : AppCompatActivity() {
                 "5.002", "5.102", "5.202", "5.502", "5.702", "5.752", "5.802", "5.852", "5.902", "5.952", "5.982"
         )
 
-        make_video.setOnClickListener {
-            ffMpegTranscoder.createVideo(path, "test.mp4", "${path}/output_${System.currentTimeMillis()}.mp4", 5, 25, 3, smallTimes)
+        extract_frames.setOnClickListener {
+            progress.visibility = View.VISIBLE
+
+            ffMpegTranscoder.extractFramesFromVideo(uri, 11113, 5, smallTimes)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .doOnError { Log.e(TAG, "fail ${it.message}") }
+                    .doOnError { Log.e(TAG, "extracting frames fail ${it.message}") }
                     .subscribe({
-                        if (it.progress != null) {
-                            Log.d(TAG, "onProgress ${it.progress}")
-                            return@subscribe
+
+                        Log.d(TAG, "extracted frame location: ${it.uri}")
+
+                        if (it.uri!!.path != null) {
+                            frameUri = it.uri!!
+                            progress.visibility = View.GONE
+
                         }
 
-                        if (it.message != null) {
-                            Log.d(TAG, "message ${it.message}")
-                        }
                     }, { it.printStackTrace() })
                     .addTo(subscription)
+        }
+
+        make_video.setOnClickListener {
+            progress.visibility = View.VISIBLE
+
+            ffMpegTranscoder.createVideoFromFrames(Uri.fromFile(File("$downloadPath/output_${System.currentTimeMillis()}.mp4")), Uri.fromFile(File(frameUri.path)))
+                    .subscribeOn(Schedulers.computation())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnError { Log.e(TAG, "creating video fails ${it.message}") }
+                    .subscribe({
+                        progress.visibility = View.GONE
+
+                        Log.d(TAG, "created video location: ${it.uri}")
+                    }, { it.printStackTrace() })
+                    .addTo(subscription)
+
         }
 
         stop_process.setOnClickListener {
