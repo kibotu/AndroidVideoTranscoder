@@ -15,21 +15,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
-    private var ffmpeg = FFmpeg.getInstance(context)
+    private var ffmpeg : FFmpeg = FFmpeg.getInstance(context)
 
     private var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
     private var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
 
-
-    data class MetaData(
-            var progress: String? = null,
-            var message: String? = null,
-            var uri: Uri? = null
-    )
-
-    enum class PixelFormatType(type: String) {
-        YUV420P("yuv420p")
-    }
 
     //todo: add percentage calculation
 
@@ -70,6 +60,10 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
             override fun onFailure(result: String?) {
                 loge("FAIL with output : $result")
+
+                //delete failed process folder
+                deleteFolder(localSavePath)
+
                 emitter.onError(Throwable(result))
             }
 
@@ -83,7 +77,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 log("progress : $progress")
                 progress?.let {
                     //todo: enable
-                   // emitter.onNext(MetaData(progress))
+                    Log.d(TAG, "process = $progress")
+                    // emitter.onNext(MetaData(progress))
                 }
             }
 
@@ -103,7 +98,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     }
 
 
-    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
+    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, pixelFormat: PixelFormatType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
 
         if (emitter.isDisposed) {
             return@create
@@ -115,7 +110,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          * -crf quality of the output video
          * -pix_fmt pixel format
          */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", "yuv420p", outputUri.path)
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, outputUri.path)
 
         val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
@@ -130,7 +125,6 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             }
 
             override fun onProgress(progress: String?) {
-                log("Started command create video : ffmpeg $cmd")
                 log("progress create video : $progress")
 
                 //todo: update progress
@@ -148,8 +142,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 log("Finished command create video: ffmpeg $cmd")
                 //delete temp files
                 if (deleteAfter) {
-                    val deleteStatus = deleteFolder(frameFolder.path!!)
-                    Log.d(TAG, "Delete temp frame save path status: $deleteStatus")
+                    val deleteStatus = deleteFolder(frameFolder.path)
+                    log("Delete temp frame save path status: $deleteStatus")
                 }
 
                 emitter.onComplete()
@@ -174,9 +168,6 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private fun deleteFolder(path: String): Boolean {
         val someDir = File(path)
-
-        //todo:make async - check the right folder removed
         return someDir.deleteRecursively()
     }
-
 }
