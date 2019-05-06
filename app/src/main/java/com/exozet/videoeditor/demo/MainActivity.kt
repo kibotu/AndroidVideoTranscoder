@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
 
         init_ffmpeg.setOnClickListener {
             ffMpegTranscoder = FFMpegTranscoder(this)
+
+            Log.v(TAG, "is Supported = ${ffMpegTranscoder.isSupported()}")
         }
 
         val times = listOf(
@@ -111,6 +113,10 @@ class MainActivity : AppCompatActivity() {
 
         stop_process.setOnClickListener {
             ffMpegTranscoder.stopAllProcesses()
+        }
+
+        delete_folder.setOnClickListener {
+            Log.v(TAG,"delete folder = ${ffMpegTranscoder.deleteExtractedFrameFolder(frameUri)}")
         }
 
     }

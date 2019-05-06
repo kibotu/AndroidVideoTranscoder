@@ -27,4 +27,14 @@ interface IFFMpegTranscoder {
             Observable<MetaData>
 
     fun stopAllProcesses()
+
+    /**
+     *  checking is FFmpeg available on your device
+     */
+    fun isSupported(): Boolean
+
+    /**
+     * @param folderUri path of the extracted images folder which desired to deleted
+     */
+    fun deleteExtractedFrameFolder(folderUri: Uri) : Boolean
 }

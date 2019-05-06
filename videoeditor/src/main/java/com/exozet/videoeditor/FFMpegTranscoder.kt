@@ -20,8 +20,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     private var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
     private var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
 
-
     //todo: add percentage calculation
+
+    override fun isSupported(): Boolean {
+        return ffmpeg.isSupported
+    }
 
     override fun extractFramesFromVideo(inputUri: Uri, carId: Long, photoQuality: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
 
@@ -169,5 +172,14 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     private fun deleteFolder(path: String): Boolean {
         val someDir = File(path)
         return someDir.deleteRecursively()
+    }
+
+
+    override fun deleteExtractedFrameFolder(folderUri: Uri): Boolean {
+        return if (folderUri.path.contains("postProcess")){
+            deleteFolder(folderUri.path)
+        }else{
+            false
+        }
     }
 }
