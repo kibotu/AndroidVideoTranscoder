@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         extract_frames.setOnClickListener {
             progress.visibility = View.VISIBLE
 
-            ffMpegTranscoder.extractFramesFromVideo(uri, 11113, 5, smallTimes)
+            ffMpegTranscoder.extractFramesFromVideo(uri, "11113", 5, smallTimes)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnError { Log.e(TAG, "extracting frames fail ${it.message}") }

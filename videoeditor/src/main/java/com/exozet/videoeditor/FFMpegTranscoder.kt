@@ -26,7 +26,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return ffmpeg.isSupported
     }
 
-    override fun extractFramesFromVideo(inputUri: Uri, carId: Long, photoQuality: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
+    override fun extractFramesFromVideo(inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>) = Observable.create<MetaData> { emitter ->
 
         val currentTime = System.currentTimeMillis()
 
