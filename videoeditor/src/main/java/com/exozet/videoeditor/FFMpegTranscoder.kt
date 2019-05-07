@@ -11,7 +11,7 @@ import java.io.File
 
 class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
-    private val internalStoragePath: String = context.filesDir.path
+    private val internalStoragePath: String = context.filesDir.absolutePath
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
@@ -57,7 +57,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          * -qscale:v :quality parameter
          * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works
          */
-        val cmd = arrayOf("-i", inputUriPath, "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "drop", "${localSavePath}image_%03d.jpg")
+        val cmd = arrayOf("-i", inputUriPath, "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "0", "${localSavePath}image_%03d.jpg")
 
         val extractFrameTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
@@ -130,15 +130,12 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             override fun onProgress(progress: String?) {
                 log("progress create video : $progress")
 
-                //todo: update progress
-                //todo: enable
-                //progress?.let { emitter.onNext(MetaData(progress = it)) }
+                progress?.let { emitter.onNext(MetaData(progress = it)) }
             }
 
             override fun onStart() {
                 log("Started command create video : ffmpeg $cmd")
-                //todo: enable
-                //emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
+                emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
             }
 
             override fun onFinish() {
