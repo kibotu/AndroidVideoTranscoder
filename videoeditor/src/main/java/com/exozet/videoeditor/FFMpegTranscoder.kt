@@ -15,7 +15,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
-    private var ffmpeg : FFmpeg = FFmpeg.getInstance(context)
+    private var ffmpeg: FFmpeg = FFmpeg.getInstance(context)
 
     private var extractFrameTaskList: ArrayList<FFtask> = arrayListOf()
     private var createVideoTaskList: ArrayList<FFtask> = arrayListOf()
@@ -113,7 +113,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          * -crf quality of the output video
          * -pix_fmt pixel format
          */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, outputUri.path)
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", "ultrafast", outputUri.path)
 
         val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
@@ -173,9 +173,9 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
 
     override fun deleteExtractedFrameFolder(folderUri: Uri): Boolean {
-        return if (folderUri.path.contains("postProcess")){
+        return if (folderUri.path.contains("postProcess")) {
             deleteFolder(folderUri.path)
-        }else{
+        } else {
             false
         }
     }
