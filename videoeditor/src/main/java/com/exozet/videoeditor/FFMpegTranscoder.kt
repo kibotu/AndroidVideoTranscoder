@@ -101,7 +101,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     }
 
 
-    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, pixelFormat: PixelFormatType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
+    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, pixelFormat: PixelFormatType, presetType: PresetType , encodeType: EncodeType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
 
         if (emitter.isDisposed) {
             return@create
@@ -113,7 +113,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          * -crf quality of the output video
          * -pix_fmt pixel format
          */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", "ultrafast", outputUri.path)
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg","-c:v", encodeType.type, "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", presetType.type, outputUri.path)
 
         val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
