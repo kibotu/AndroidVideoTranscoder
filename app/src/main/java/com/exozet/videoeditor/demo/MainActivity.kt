@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
 
-        //var uri = Uri.parse("$downloadPath/test.mp4")
+        var uri = Uri.parse("$downloadPath/test.mp4")
 
         // init FFMpeg object
 
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         extract_frames.setOnClickListener {
             progress.visibility = View.VISIBLE
 
-            ffMpegTranscoder.extractFramesFromVideo(parseAssetFile("sampleVideo.mp4"), "11113", 5, smallTimes)
+            ffMpegTranscoder.extractFramesFromVideo(uri, "11113", 5, smallTimes)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnError { Log.e(TAG, "extracting frames fail ${it.message}") }
@@ -127,7 +127,4 @@ class MainActivity : AppCompatActivity() {
         }
         super.onDestroy()
     }
-
-    fun parseAssetFile(file: String): Uri = Uri.parse("file:///android_asset/$file")
-
 }

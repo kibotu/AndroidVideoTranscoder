@@ -41,8 +41,6 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         //create new folder
         File(localSavePath).mkdirs()
 
-        emitter.onNext(MetaData(processPathUri = Uri.parse(localSavePath)))
-
         var selectedTimePoints = "select='"
 
         frameTimes.forEach {
