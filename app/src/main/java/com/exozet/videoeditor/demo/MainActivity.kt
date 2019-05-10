@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         make_video.setOnClickListener {
             progress.visibility = View.VISIBLE
 
-            ffMpegTranscoder.createVideoFromFrames(Uri.fromFile(File("$downloadPath/output_${System.currentTimeMillis()}.mp4")), Uri.fromFile(File(frameUri.path)))
+            ffMpegTranscoder.createVideoFromFrames(Uri.fromFile(File("$downloadPath/output_${System.currentTimeMillis()}.mp4")), Uri.fromFile(File(frameUri.path)), outputFps = 24)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnError { Log.e(TAG, "creating video fails ${it.message}") }

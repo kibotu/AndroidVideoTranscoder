@@ -34,30 +34,25 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             return@create
         }
 
-        val inputUriPath = inputUri.path
-
         val localSavePath = "$internalStoragePath/postProcess/$carId/$currentTime/"
 
         //create new folder
-        File(localSavePath).mkdirs()
+        val file = File(localSavePath)
+        if (!file.exists())
+            file.mkdirs()
 
-        var selectedTimePoints = "select='"
-
-        frameTimes.forEach {
-            selectedTimePoints += "lt(prev_pts*TB\\,$it)*gte(pts*TB\\,$it)+"
+        val result = frameTimes.joinToString(separator = "+") {
+            "lt(prev_pts*TB\\,$it)*gte(pts*TB\\,$it)"
         }
-
-        selectedTimePoints = selectedTimePoints.substring(0, selectedTimePoints.length - 1)
-        selectedTimePoints += "'"
 
         /**
          * -i : input
          * -vf : filter_graph set video filters
          * -filter:v : video filter for given parameters - like requested frame times
          * -qscale:v :quality parameter
-         * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works
+         * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works - if we set it to 0 it skips duplicate frames I guess
          */
-        val cmd = arrayOf("-i", inputUriPath, "-qscale:v", "$photoQuality", "-filter:v", selectedTimePoints, "-vsync", "0", "${localSavePath}image_%03d.jpg")
+        val cmd = arrayOf("-i", inputUri.path, "-qscale:v", "$photoQuality", "-filter:v", "select='$result'", "-vsync", "0", "${localSavePath}image_%03d.jpg")
 
         val extractFrameTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
@@ -73,7 +68,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             override fun onSuccess(result: String?) {
                 log("SUCCESS with output : $result")
 
-                emitter.onNext(MetaData(uri = Uri.fromFile(File(localSavePath))))
+                emitter.onNext(MetaData(uri = Uri.fromFile(file)))
             }
 
             override fun onProgress(progress: String?) {
@@ -101,7 +96,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     }
 
 
-    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, pixelFormat: PixelFormatType, presetType: PresetType , encodeType: EncodeType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
+    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, outputFps: Int, pixelFormat: PixelFormatType, presetType: PresetType, encodeType: EncodeType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
 
         if (emitter.isDisposed) {
             return@create
@@ -112,8 +107,9 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
          * -framerate : frame rate of the video
          * -crf quality of the output video
          * -pix_fmt pixel format
+         * -r Set frame rate -r option is applied after the video filters - As an output option, duplicate or drop input frames to achieve constant output frame rate fps.
          */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg","-c:v", encodeType.type, "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", presetType.type, outputUri.path)
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-c:v", encodeType.type, "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", presetType.type,"-r", "$outputFps", outputUri.path)
 
         val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
