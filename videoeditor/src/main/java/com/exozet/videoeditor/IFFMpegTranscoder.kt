@@ -24,9 +24,10 @@ interface IFFMpegTranscoder {
      * @param pixelFormat type of the pixelFormat , default is yup420p
      * @param presetType type of the preset , default is ultrafast
      * @param encodeType type of the encode , default is libx264
+     * @param threadType type of the thread , default is auto , 0 is optimal(not totally sure)
      * @param deleteAfter delete frame folder after the creating video
      */
-    fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, deleteAfter: Boolean = true):
+    fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true):
             Observable<MetaData>
 
     fun stopAllProcesses()

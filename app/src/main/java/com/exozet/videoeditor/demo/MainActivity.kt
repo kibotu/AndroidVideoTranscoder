@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.exozet.videoeditor.FFMpegTranscoder
+import com.exozet.videoeditor.ThreadType
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
@@ -98,7 +99,7 @@ class MainActivity : AppCompatActivity() {
         make_video.setOnClickListener {
             progress.visibility = View.VISIBLE
 
-            ffMpegTranscoder.createVideoFromFrames(Uri.fromFile(File("$downloadPath/output_${System.currentTimeMillis()}.mp4")), Uri.fromFile(File(frameUri.path)), outputFps = 24)
+            ffMpegTranscoder.createVideoFromFrames(Uri.fromFile(File("$downloadPath/output_${System.currentTimeMillis()}.mp4")), Uri.fromFile(File(frameUri.path)), outputFps = 24, threadType = ThreadType.OPTIMAL)
                     .subscribeOn(Schedulers.computation())
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnError { Log.e(TAG, "creating video fails ${it.message}") }
