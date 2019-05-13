@@ -96,7 +96,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     }
 
 
-    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, outputFps: Int, pixelFormat: PixelFormatType, presetType: PresetType, encodeType: EncodeType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
+    override fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, videoQuality: Int, fps: Int, outputFps: Int, pixelFormat: PixelFormatType, presetType: PresetType, deleteAfter: Boolean) = Observable.create<MetaData> { emitter ->
 
         if (emitter.isDisposed) {
             return@create
@@ -105,11 +105,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         /**
          * -i : input
          * -framerate : frame rate of the video
-         * -crf quality of the output video
+         * -crf quality of the output video  "-c:v", encodeType.type,
          * -pix_fmt pixel format
          * -r Set frame rate -r option is applied after the video filters - As an output option, duplicate or drop input frames to achieve constant output frame rate fps.
          */
-        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg", "-c:v", encodeType.type, "-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", presetType.type,"-r", "$outputFps", outputUri.path)
+        val cmd = arrayOf("-framerate", "$fps", "-i", "${frameFolder.path}/image_%03d.jpg","-crf", "$videoQuality", "-pix_fmt", pixelFormat.type, "-preset", presetType.type,"-r", "$outputFps", outputUri.path)
 
         val createVideoTask = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
