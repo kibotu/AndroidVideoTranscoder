@@ -102,6 +102,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             return@create
         }
 
+        //val cores =  Runtime.getRuntime().availableProcessors()
+
         /**
          * -i : input
          * -framerate : frame rate of the video
