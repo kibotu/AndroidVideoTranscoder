@@ -15,6 +15,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
+import net.kibotu.logger.Logger.logv
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -74,6 +75,10 @@ class MainActivity : AppCompatActivity() {
                 "4.002", "4.102", "4.202", "4.502", "4.702", "4.752", "4.802", "4.852", "4.902", "4.952", "4.982",
                 "5.002", "5.102", "5.202", "5.502", "5.702", "5.752", "5.802", "5.852", "5.902", "5.952", "5.982"
         )
+
+        delete_all.setOnClickListener {
+            Log.d(TAG, "delete all = ${ffMpegTranscoder.deleteAllProcessFiles()}")
+        }
 
         extract_frames.setOnClickListener {
             progress.visibility = View.VISIBLE

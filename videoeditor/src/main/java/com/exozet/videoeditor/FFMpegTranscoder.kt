@@ -171,6 +171,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return someDir.deleteRecursively()
     }
 
+    override fun deleteAllProcessFiles(): Boolean {
+        val localSavePath = "$internalStoragePath/postProcess/"
+        return deleteFolder(localSavePath)
+    }
+
 
     override fun deleteExtractedFrameFolder(folderUri: Uri): Boolean {
         return if (folderUri.path.contains("postProcess")) {

@@ -32,6 +32,7 @@ interface IFFMpegTranscoder {
 
     fun stopAllProcesses()
 
+    fun deleteAllProcessFiles() : Boolean
     /**
      *  checking is FFmpeg available on your device
      */
