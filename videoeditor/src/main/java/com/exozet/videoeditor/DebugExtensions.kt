@@ -8,7 +8,7 @@ package com.exozet.videoeditor
 
 import android.util.Log
 
-internal val debug = true
+internal val debug = BuildConfig.DEBUG
 
 internal fun Any.log(message: String?) {
     if (debug)

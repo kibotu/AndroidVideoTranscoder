@@ -14,6 +14,7 @@ interface IFFMpegTranscoder {
      */
     fun extractFramesFromVideo(inputUri: Uri, carId: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, frameTimes: List<String>): Observable<MetaData>
 
+    //todo: put them into the parameter class
     //todo: naming!!
     /**
      * @param outputUri Uri of the requested output file with filename and type "/../Downloads/outputVideo.mp4"
@@ -30,7 +31,7 @@ interface IFFMpegTranscoder {
     fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true):
             Observable<MetaData>
 
-    fun stopAllProcesses()
+    fun changeKeyframeInterval()
 
     fun deleteAllProcessFiles() : Boolean
     /**
