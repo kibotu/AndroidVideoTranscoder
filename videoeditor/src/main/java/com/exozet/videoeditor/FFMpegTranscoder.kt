@@ -23,6 +23,78 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return ffmpeg.isSupported
     }
 
+    override fun transcode(inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData> {
+
+        var task: FFtask? = null
+
+        val observable = Observable.create<MetaData> { emitter ->
+
+            val currentTime = System.currentTimeMillis()
+
+            if (emitter.isDisposed) {
+                return@create
+            }
+
+            /**
+             * -i : input
+             * -vf : filter_graph set video filters
+             * -filter:v : video filter for given parameters - like requested frame times
+             * -qscale:v :quality parameter
+             * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works - if we set it to 0 it skips duplicate frames I guess
+             */
+            //  ffmpeg -i example_walkaround.mov -c:v libx264 -profile:v baseline -level 3.0 -x264opts keyint=10:min-keyint=10 -g 10 -movflags +faststart+rtphint -maxrate:v 3000k -bufsize:v 3500k walkaround-quick.mp4
+            val cmd = arrayOf(
+                "-i", inputUri.toString(),
+                "-c:v", "libx264",
+                "-profile:v", "baseline",
+                "-level", "3.0",
+                "-x264opts", "keyint=10:min-keyint=10",
+                "-g", "10",
+                "-movflags", "+faststart+rtphint",
+                "-maxrate:v", "${maxrate}k",
+                "-bufsize:v", "${bufsize}k",
+                "$outputUri"
+            )
+
+            task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+
+                override fun onFailure(result: String?) {
+                    loge("FAIL with output : $result")
+
+                    emitter.onError(Throwable(result))
+                }
+
+                override fun onSuccess(result: String?) {
+                    log("SUCCESS with output : $result")
+
+                    emitter.onNext(MetaData(message = "$outputUri", progress = "onSuccess: $result"))
+                }
+
+                override fun onProgress(progress: String?) {
+                    log("progress : $progress")
+                    emitter.onNext(MetaData(progress))
+                }
+
+                override fun onStart() {
+                    log("Started command : ffmpeg $cmd")
+                    //todo: enable
+                    //emitter.onNext(MetaData(message = "Started Command $cmd"))
+                }
+
+                override fun onFinish() {
+                    log("Finished command : ffmpeg $cmd")
+                    emitter.onComplete()
+                }
+            })
+
+        }.doOnDispose {
+            if (task?.killRunningProcess() == false)
+                task?.sendQuitSignal()
+        }
+
+        return observable
+    }
+
     override fun extractFramesFromVideo(inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>): Observable<MetaData> {
 
         var task: FFtask? = null
@@ -112,8 +184,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         encodeType: EncodeType,
         threadType: ThreadType,
         deleteAfter: Boolean,
-        maxrate : Int,
-        bufsize : Int
+        maxrate: Int,
+        bufsize: Int
     ): Observable<MetaData> {
 
         var task: FFtask? = null

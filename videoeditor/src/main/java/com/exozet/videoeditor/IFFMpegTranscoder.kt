@@ -48,4 +48,5 @@ interface IFFMpegTranscoder {
      */
     fun deleteExtractedFrameFolder(folderUri: Uri): Boolean
 
+    fun transcode(inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData>
 }
