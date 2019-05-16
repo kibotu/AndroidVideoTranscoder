@@ -101,6 +101,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
     override fun createVideoFromFrames(
         outputUri: Uri,
         frameFolder: Uri,
+        keyInt: Int,
+        minKeyInt: Int,
         videoQuality: Int,
         fps: Int,
         outputFps: Int,
@@ -137,6 +139,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 "${frameFolder.path}/image_%03d.jpg",
                 "-c:v",
                 encodeType.type,
+                "-x264opts",
+                 "keyint=$keyInt:min-keyint=$minKeyInt",
 //                "-g",
 //                "5",
 //                "-keyint_min",

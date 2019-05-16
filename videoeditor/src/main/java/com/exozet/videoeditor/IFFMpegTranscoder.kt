@@ -19,6 +19,8 @@ interface IFFMpegTranscoder {
     /**
      * @param outputUri Uri of the requested output file with filename and type "/../Downloads/outputVideo.mp4"
      * @param frameFolder folder of the extracted frames
+     * @param keyInt key frames
+     * @param minKeyInt min key frames
      * @param videoQuality quality of output video - For x264 valid range is 0-51 - ffmpeg default is 23 and non-noticeable quality is 18
      * @param fps requested video frame rate
      * @param outputFps requested video frame rate after the filtering
@@ -28,7 +30,7 @@ interface IFFMpegTranscoder {
      * @param threadType type of the thread , default is auto , 0 is optimal(not totally sure)
      * @param deleteAfter delete frame folder after the creating video
      */
-    fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true):
+    fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri,@IntRange(from = 1, to = 60) keyInt: Int = 8,@IntRange(from = 1, to = 60) minKeyInt: Int = 7, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true):
             Observable<MetaData>
 
     fun changeKeyframeInterval()
