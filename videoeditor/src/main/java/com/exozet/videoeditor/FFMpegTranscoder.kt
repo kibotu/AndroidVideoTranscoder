@@ -103,6 +103,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         frameFolder: Uri,
         keyInt: Int,
         minKeyInt: Int,
+        gopValue: Int,
         videoQuality: Int,
         fps: Int,
         outputFps: Int,
@@ -110,7 +111,9 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         presetType: PresetType,
         encodeType: EncodeType,
         threadType: ThreadType,
-        deleteAfter: Boolean
+        deleteAfter: Boolean,
+        maxrate : Int,
+        bufsize : Int
     ): Observable<MetaData> {
 
         var task: FFtask? = null
@@ -140,15 +143,17 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 "-c:v",
                 encodeType.type,
                 "-x264opts",
-                 "keyint=$keyInt:min-keyint=$minKeyInt",
-//                "-g",
-//                "5",
-//                "-keyint_min",
-//                "5",
+                "keyint=$keyInt:min-keyint=$minKeyInt",
+                "-g",
+                "$gopValue",
 //                "-threads",
 //                threadType.type,
                 "-crf",
                 "$videoQuality",
+                "-maxrate:v",
+                "${maxrate}k",
+                "-bufsize:v",
+                "${bufsize}k",
                 "-pix_fmt",
                 pixelFormat.type,
                 "-preset",
@@ -214,8 +219,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
 
     override fun deleteExtractedFrameFolder(folderUri: Uri): Boolean {
-        return if (folderUri.path.contains("postProcess")) {
-            deleteFolder(folderUri.path)
+        return if (folderUri.path?.contains("postProcess") == true) {
+            deleteFolder(folderUri.path!!)
         } else {
             false
         }

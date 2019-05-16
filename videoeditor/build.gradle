@@ -69,24 +69,11 @@ android {
 
 dependencies {
     implementation libs.kotlinJdk8
-    implementation libs.supportDesign
-    implementation libs.supportAppCompat
-    implementation libs.appCompatResources
     implementation libs.supportAnnotations
-    implementation libs.androidKtx
 
     implementation libs.rx2java
     implementation libs.rx2Android
     implementation libs.rx2Kotlin
-
-    api libs.archWorkRuntime
-    api libs.archWorkRxJava2
-
-    implementation libs.exozetCore
-    implementation libs.logger
-
-    implementation libs.parceler
-    kapt libs.parcelerProcessor
 
     implementation 'nl.bravobit:android-ffmpeg:1.1.5'
 }
@@ -95,12 +82,7 @@ configurations.all {
     resolutionStrategy.cacheDynamicVersionsFor 10, 'minutes'
 
     resolutionStrategy.force libs.kotlinJdk8
-    resolutionStrategy.force libs.supportDesign
-    resolutionStrategy.force libs.supportAppCompat
-    resolutionStrategy.force libs.appCompatResources
     resolutionStrategy.force libs.supportAnnotations
-    resolutionStrategy.force libs.androidKtx
-    resolutionStrategy.force libs.gson
 }
 
 apply from: "${project.rootDir}/Android-Dependencies/javadoc.gradle"
