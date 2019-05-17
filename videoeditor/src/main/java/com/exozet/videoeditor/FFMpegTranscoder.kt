@@ -15,15 +15,18 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val TAG = FFMpegTranscoder::class.java.simpleName
 
-    private var ffmpeg: FFmpeg = FFmpeg.getInstance(context)
 
     //todo: add percentage calculation
 
-    override fun isSupported(): Boolean {
+    override fun isSupported(context: Context): Boolean {
+        var ffmpeg = FFmpeg.getInstance(context)
+
         return ffmpeg.isSupported
     }
 
-    override fun transcode(inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData> {
+    override fun transcode(context: Context, inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData> {
+
+        var ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
@@ -95,7 +98,9 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return observable
     }
 
-    override fun extractFramesFromVideo(inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>): Observable<MetaData> {
+    override fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>): Observable<MetaData> {
+
+        var ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
@@ -171,6 +176,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
 
     override fun createVideoFromFrames(
+        context: Context,
         outputUri: Uri,
         frameFolder: Uri,
         keyInt: Int,
@@ -187,6 +193,8 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         maxrate: Int,
         bufsize: Int
     ): Observable<MetaData> {
+
+        var ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
@@ -206,8 +214,10 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
              * -threads thread option
              * -preset how much time to create video - if selected ultrafast or something like that, it reduces the time but increases the size and loses quality
              * -r Set frame rate -r option is applied after the video filters - As an output option, duplicate or drop input frames to achieve constant output frame rate fps.
+             * -y overrides if the is an existing file
              */
             val cmd = arrayOf(
+                "-y",
                 "-framerate",
                 "$fps",
                 "-i",

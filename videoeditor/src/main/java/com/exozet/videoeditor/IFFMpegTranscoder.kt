@@ -1,5 +1,6 @@
 package com.exozet.videoeditor
 
+import android.content.Context
 import android.net.Uri
 import androidx.annotation.IntRange
 import io.reactivex.Observable
@@ -12,7 +13,7 @@ interface IFFMpegTranscoder {
      * @param photoQuality quality of extracted frames - Effective range for JPEG is 2-31 with 31 being the worst quality
      * @param frameTimes  ms of the requested frames at source video - example "1.023"</pre>
      */
-    fun extractFramesFromVideo(inputUri: Uri, carId: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, frameTimes: List<String>): Observable<MetaData>
+    fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, frameTimes: List<String>): Observable<MetaData>
 
     //todo: put them into the parameter class
     //todo: naming!!
@@ -31,7 +32,7 @@ interface IFFMpegTranscoder {
      * @param threadType type of the thread , default is auto , 0 is optimal(not totally sure)
      * @param deleteAfter delete frame folder after the creating video
      */
-    fun createVideoFromFrames(outputUri: Uri, frameFolder: Uri,@IntRange(from = 1, to = 60) keyInt: Int = 8,@IntRange(from = 1, to = 60) minKeyInt: Int = 8,@IntRange(from = 1, to = 60) gopValue: Int = 8, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true, maxrate: Int = 3000,
+    fun createVideoFromFrames(context: Context,outputUri: Uri, frameFolder: Uri,@IntRange(from = 1, to = 60) keyInt: Int = 8,@IntRange(from = 1, to = 60) minKeyInt: Int = 8,@IntRange(from = 1, to = 60) gopValue: Int = 8, @IntRange(from = 0, to = 51) videoQuality: Int = 18, @IntRange(from = 1, to = 60) fps: Int = 3, @IntRange(from = 1, to = 60) outputFps: Int, pixelFormat: PixelFormatType = PixelFormatType.YUV420P, presetType: PresetType = PresetType.ULTRAFAST, encodeType: EncodeType = EncodeType.LIBX264, threadType: ThreadType = ThreadType.AUTO, deleteAfter: Boolean = true, maxrate: Int = 3000,
                               bufsize: Int =3500):
             Observable<MetaData>
 
@@ -41,12 +42,12 @@ interface IFFMpegTranscoder {
     /**
      *  checking is FFmpeg available on your device
      */
-    fun isSupported(): Boolean
+    fun isSupported(context: Context): Boolean
 
     /**
      * @param folderUri path of the extracted images folder which desired to deleted
      */
     fun deleteExtractedFrameFolder(folderUri: Uri): Boolean
 
-    fun transcode(inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData>
+    fun transcode(context: Context,inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData>
 }
