@@ -100,7 +100,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     override fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>): Observable<MetaData> {
 
-        var ffmpeg = FFmpeg.getInstance(context)
+        val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 

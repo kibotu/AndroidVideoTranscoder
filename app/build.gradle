@@ -99,8 +99,14 @@ dependencies {
     implementation libs.supportMultidex
     implementation libs.supportAppCompat
     implementation libs.appCompatResources
-    implementation libs.constraintLayout
-    implementation libs.androidKtx
+    implementation libs.supportMedia
+    implementation libs.androidKtxCore
+    implementation libs.activityKtx
+    implementation libs.fragmentKtx
+    implementation libs.supportDesign
+    implementation libs.constraintLayout2
+    implementation libs.supportRecyclerview
+    implementation libs.supportAnnotations
 
     implementation libs.rx2java
     implementation libs.rx2Android
@@ -114,6 +120,7 @@ dependencies {
     implementation libs.exozetCore
     implementation libs.logger
     implementation libs.okhttp3ResponseEcho
+    implementation libs.rxpermissions
 
     implementation project(':videoeditor')
 
