@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment.DIRECTORY_DOWNLOADS
 import android.os.Environment.getExternalStoragePublicDirectory
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.exozet.android.core.extensions.isNotNullOrEmpty
 import com.exozet.android.core.extensions.parseExternalStorageFile
@@ -90,7 +89,7 @@ class MainActivity : AppCompatActivity() {
     private fun mergeFrames(ffMpegTranscoder: FFMpegTranscoder, downloadPath: String) {
         make_video.setOnClickListener {
 
-            progress.visibility = View.VISIBLE
+            //            progress.visibility = View.VISIBLE
 
             ffMpegTranscoder.createVideoFromFrames(
                 context = this,
@@ -102,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.computation())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    progress.visibility = View.GONE
+                    //                    progress.visibility = View.GONE
 
                     logv { "createVideoFromFrames $it" }
 
@@ -129,6 +128,8 @@ class MainActivity : AppCompatActivity() {
                 increment * it.toDouble()
             }
 
+            output.text = ""
+
             ffMpegTranscoder.extractFramesFromVideo(this, uri, "11113", 5, times.map { it.toString() }, output = downloadPath)
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -138,7 +139,7 @@ class MainActivity : AppCompatActivity() {
 
                     logv { "extract frames $it" }
 
-                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message}".trimMargin()
+                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
 
                     if (it.uri?.toString().isNotNullOrEmpty()) {
                         frameUri = it.uri!!
