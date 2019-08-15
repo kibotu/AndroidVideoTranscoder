@@ -2,27 +2,22 @@ package com.exozet.videoeditor
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import io.reactivex.Observable
 import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
 import nl.bravobit.ffmpeg.FFmpeg
 import nl.bravobit.ffmpeg.FFtask
 import java.io.File
+import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.roundToInt
 
 class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val internalStoragePath: String = context.filesDir.absolutePath
 
-    private val TAG = FFMpegTranscoder::class.java.simpleName
-
-
     //todo: add percentage calculation
 
-    override fun isSupported(context: Context): Boolean {
-        var ffmpeg = FFmpeg.getInstance(context)
-
-        return ffmpeg.isSupported
-    }
+    override fun isSupported(context: Context): Boolean = FFmpeg.getInstance(context) != null
 
     override fun transcode(context: Context, inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData> {
 
@@ -70,12 +65,12 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 override fun onSuccess(result: String?) {
                     log("SUCCESS with output : $result")
 
-                    emitter.onNext(MetaData(message = "$outputUri", progress = "onSuccess: $result"))
+                    emitter.onNext(MetaData(uri = outputUri, message = "onSuccess: $result"))
                 }
 
                 override fun onProgress(progress: String?) {
                     log("progress : $progress")
-                    emitter.onNext(MetaData(progress))
+                    emitter.onNext(MetaData(message = progress))
                 }
 
                 override fun onStart() {
@@ -98,27 +93,31 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return observable
     }
 
-    override fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>): Observable<MetaData> {
+    override fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>, output: String?): Observable<MetaData> {
 
         val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
-        val observable = Observable.create<MetaData> { emitter ->
+        val percent = AtomicInteger()
+        val total = frameTimes.size
 
-            val currentTime = System.currentTimeMillis()
+        return Observable.create<MetaData> { emitter ->
+
+            val startTime = System.currentTimeMillis()
 
             if (emitter.isDisposed) {
                 return@create
             }
 
-            val localSavePath = "$internalStoragePath/postProcess/$carId/$currentTime/"
+            val localSavePath = "${output ?: internalStoragePath}/postProcess/$carId/$startTime/"
 
             //create new folder
             val file = File(localSavePath)
             if (!file.exists())
                 file.mkdirs()
 
+            // https://superuser.com/a/1330042
             val result = frameTimes.joinToString(separator = "+") {
                 "lt(prev_pts*TB\\,$it)*gte(pts*TB\\,$it)"
             }
@@ -127,15 +126,15 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
              * -i : input
              * -vf : filter_graph set video filters
              * -filter:v : video filter for given parameters - like requested frame times
-             * -qscale:v :quality parameter
+             * -qscale:v :quality parameter [1,31]
              * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works - if we set it to 0 it skips duplicate frames I guess
              */
-            val cmd = arrayOf("-i", inputUri.toString(), "-qscale:v", "$photoQuality", "-filter:v", "select='$result'", "-vsync", "0", "${localSavePath}image_%03d.jpg")
+            val cmd = arrayOf("-threads", "60", "-i", inputUri.toString(), "-qscale:v", "$photoQuality", "-filter:v", "select='$result'", "-vsync", "0", "${localSavePath}image_%03d.jpg")
 
             task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
                 override fun onFailure(result: String?) {
-                    loge("FAIL with output : $result")
+                    loge("onFailure : $result")
 
                     //delete failed process folder
                     deleteFolder(localSavePath)
@@ -144,24 +143,34 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
                 }
 
                 override fun onSuccess(result: String?) {
-                    log("SUCCESS with output : $result")
+                    log("onSuccess : $result")
 
                     emitter.onNext(MetaData(uri = Uri.fromFile(file)))
                 }
 
                 override fun onProgress(progress: String?) {
-                    log("progress : $progress")
-                    emitter.onNext(MetaData(progress))
+                    // log("onProgress : $progress")
+
+                    val currentFrame = progress?.split(" ")
+                        ?.filterNot { it.isBlank() }
+                        ?.take(2)
+                        ?.lastOrNull()
+                        ?.toIntOrNull()
+
+                    if (currentFrame != null)
+                        percent.set((100f * currentFrame / total).roundToInt())
+
+                    emitter.onNext(MetaData(message = progress, progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    log("Started command : ffmpeg $cmd")
-                    //todo: enable
-                    //emitter.onNext(MetaData(message = "Started Command $cmd"))
+                    // log("onStart  $cmd")
+                    emitter.onNext(MetaData(message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    log("Finished command : ffmpeg $cmd")
+                    log("onFinish $cmd")
+                    emitter.onNext(MetaData(message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
             })
@@ -170,10 +179,7 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             if (task?.killRunningProcess() == false)
                 task?.sendQuitSignal()
         }
-
-        return observable
     }
-
 
     override fun createVideoFromFrames(
         context: Context,
@@ -254,12 +260,12 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
                 override fun onSuccess(result: String?) {
                     log("SUCCESS create video with output : $result")
-                    emitter.onNext(MetaData(message = outputUri.path, progress = "onSuccess: $result"))
+                    emitter.onNext(MetaData(uri = outputUri, message = "onSuccess: $result"))
                 }
 
                 override fun onProgress(progress: String?) {
                     log("progress create video : $progress")
-                    emitter.onNext(MetaData(progress = progress))
+                    emitter.onNext(MetaData(message = progress))
                 }
 
                 override fun onStart() {

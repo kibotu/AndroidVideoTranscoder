@@ -8,8 +8,9 @@ import android.os.Environment.getExternalStoragePublicDirectory
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.exozet.android.core.extensions.isNotNullOrEmpty
-import com.exozet.android.core.extensions.parseAssetFile
+import com.exozet.android.core.extensions.parseExternalStorageFile
 import com.exozet.android.core.extensions.parseFile
+import com.exozet.android.core.extensions.show
 import com.exozet.videoeditor.FFMpegTranscoder
 import com.exozet.videoeditor.ThreadType
 import com.tbruyelle.rxpermissions2.RxPermissions
@@ -24,6 +25,7 @@ import net.kibotu.logger.Logger.logv
 import net.kibotu.logger.Logger.logw
 import java.io.IOException
 import java.io.InputStream
+import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity() {
@@ -36,9 +38,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        checkWriteExternalStoragePermission()
-
         Logger.addLogger(LogcatLogger())
+
+        checkWriteExternalStoragePermission()
     }
 
     override fun onDestroy() {
@@ -70,43 +72,24 @@ class MainActivity : AppCompatActivity() {
 
         val ffMpegTranscoder = FFMpegTranscoder(this)
 
-        val uri = "walkaround.mp4".parseAssetFile()
-
-        logv { "uri=${uri.assetFileExists}" }
-
         init_ffmpeg.text = "FFmpeg is ${if (ffMpegTranscoder.isSupported(this)) "" else "not"} supported."
+
+        extractFrames(ffMpegTranscoder, downloadPath)
+
+        mergeFrames(ffMpegTranscoder, downloadPath)
+
+        delete_folder.setOnClickListener {
+            logv { "delete folder = ${ffMpegTranscoder.deleteExtractedFrameFolder(frameUri)}" }
+        }
 
         delete_all.setOnClickListener {
             logv { "delete all = ${ffMpegTranscoder.deleteAllProcessFiles()}" }
         }
+    }
 
-        extract_frames.setOnClickListener {
-            progress.visibility = View.VISIBLE
-
-            logv("extractFramesFromVideo uri=$uri")
-
-            ffMpegTranscoder.extractFramesFromVideo(this, uri, "11113", 5, smallTimes)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-
-                    logv { "extractFramesFromVideo metaData=$it" }
-
-                    logv { "extracted frame location: ${it.uri}" }
-
-                    if (it.uri?.toString().isNotNullOrEmpty()) {
-                        frameUri = it.uri!!
-                        progress.visibility = View.GONE
-                    }
-
-                }, {
-                    logv { "extracting frames fail ${it.message}" }
-                }, {
-                    logv { "extractFramesFromVideo on complete " }
-                })
-                .addTo(subscription)
-        }
-
+    private fun mergeFrames(ffMpegTranscoder: FFMpegTranscoder, downloadPath: String) {
         make_video.setOnClickListener {
+
             progress.visibility = View.VISIBLE
 
             ffMpegTranscoder.createVideoFromFrames(
@@ -121,18 +104,56 @@ class MainActivity : AppCompatActivity() {
                 .subscribe({
                     progress.visibility = View.GONE
 
-                    logv { "createVideoFromFrames metaData=$it" }
+                    logv { "createVideoFromFrames $it" }
 
-                    logv { "created video location: ${it.uri}" }
                 }, {
-                    "creating video fails ${it.message}"
+                    logv { "creating video fails ${it.message}" }
                     it.printStackTrace()
                 }, { logv { "createVideoFromFrames on complete " } })
                 .addTo(subscription)
         }
+    }
 
-        delete_folder.setOnClickListener {
-            logv { "delete folder = ${ffMpegTranscoder.deleteExtractedFrameFolder(frameUri)}" }
+    private fun extractFrames(ffMpegTranscoder: FFMpegTranscoder, downloadPath: String) {
+
+        val uri = "Download/walkaround.mp4".parseExternalStorageFile()
+        logv { "uri=${uri.assetFileExists}" }
+
+        extract_frames.setOnClickListener {
+
+            logv { "extractFramesFromVideo $uri" }
+
+            val increment = 63f / 360f
+
+            val times = (0..360).map {
+                increment * it.toDouble()
+            }
+
+            ffMpegTranscoder.extractFramesFromVideo(this, uri, "11113", 5, times.map { it.toString() }, output = downloadPath)
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+
+                    extract_frames_progress.show()
+
+                    logv { "extract frames $it" }
+
+                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message}".trimMargin()
+
+                    if (it.uri?.toString().isNotNullOrEmpty()) {
+                        frameUri = it.uri!!
+                    }
+
+                    extract_frames_progress.progress = it.progress
+
+                }, {
+                    logv { "extracting frames fail ${it.message}" }
+
+                    it.printStackTrace()
+                }, {
+                    logv { "extractFramesFromVideo on complete" }
+                })
+                .addTo(subscription)
         }
     }
 

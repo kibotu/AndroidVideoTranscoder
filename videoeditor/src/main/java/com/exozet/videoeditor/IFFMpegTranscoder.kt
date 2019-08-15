@@ -13,7 +13,7 @@ interface IFFMpegTranscoder {
      * @param photoQuality quality of extracted frames - Effective range for JPEG is 2-31 with 31 being the worst quality
      * @param frameTimes  ms of the requested frames at source video - example "1.023"</pre>
      */
-    fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, frameTimes: List<String>): Observable<MetaData>
+    fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, @IntRange(from = 2, to = 31) photoQuality: Int = 2, frameTimes: List<String>, output: String? = null): Observable<MetaData>
 
     //todo: put them into the parameter class
     //todo: naming!!
