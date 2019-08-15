@@ -2,6 +2,7 @@ package com.exozet.videoeditor
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.IntRange
 import io.reactivex.Observable
 import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
 import nl.bravobit.ffmpeg.FFmpeg
@@ -15,13 +16,11 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
 
     private val internalStoragePath: String = context.filesDir.absolutePath
 
-    //todo: add percentage calculation
-
     override fun isSupported(context: Context): Boolean = FFmpeg.getInstance(context) != null
 
     override fun transcode(context: Context, inputUri: Uri, outputUri: Uri, carId: String, maxrate: Int, bufsize: Int): Observable<MetaData> {
 
-        var ffmpeg = FFmpeg.getInstance(context)
+        val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
@@ -93,24 +92,26 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         return observable
     }
 
-    override fun extractFramesFromVideo(context: Context, inputUri: Uri, carId: String, photoQuality: Int, frameTimes: List<String>, output: String?): Observable<MetaData> {
+    override fun extractFramesFromVideo(context: Context, frameTimes: List<String>, inputVideo: Uri, id: String, outputDir: Uri?, @IntRange(from = 1, to = 31) photoQuality: Int): Observable<MetaData> {
 
         val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
-        val percent = AtomicInteger()
-        val total = frameTimes.size
 
         return Observable.create<MetaData> { emitter ->
-
-            val startTime = System.currentTimeMillis()
 
             if (emitter.isDisposed) {
                 return@create
             }
 
-            val localSavePath = "${output ?: internalStoragePath}/postProcess/$carId/$startTime/"
+            val percent = AtomicInteger()
+
+            val total = frameTimes.size
+
+            val startTime = System.currentTimeMillis()
+
+            val localSavePath = "${outputDir ?: internalStoragePath}/postProcess/$id/$startTime/"
 
             //create new folder
             val file = File(localSavePath)
@@ -129,47 +130,47 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
              * -qscale:v :quality parameter [1,31]
              * -vsync : drop : This allows to work around any non-monotonic time-stamp errors //not sure how it totally works - if we set it to 0 it skips duplicate frames I guess
              */
-            val cmd = arrayOf("-threads", "60", "-i", inputUri.toString(), "-qscale:v", "$photoQuality", "-filter:v", "select='$result'", "-vsync", "0", "${localSavePath}image_%03d.jpg")
+            val cmd = arrayOf(
+                "-threads", "${Runtime.getRuntime().availableProcessors()}",
+                "-i", inputVideo.toString(),
+                "-qscale:v", "$photoQuality",
+                "-filter:v", "select='$result'",
+                "-vsync", "0",
+                "${localSavePath}image_%03d.jpg"
+            )
 
             task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
                 override fun onFailure(result: String?) {
-                    loge("onFailure : $result")
-
+                    emitter.onError(Throwable(result))
                     //delete failed process folder
                     deleteFolder(localSavePath)
-
-                    emitter.onError(Throwable(result))
                 }
 
                 override fun onSuccess(result: String?) {
-                    log("onSuccess : $result")
-
                     emitter.onNext(MetaData(uri = Uri.fromFile(file)))
                 }
 
                 override fun onProgress(progress: String?) {
-                    // log("onProgress : $progress")
-
+                    // the 2nd parameter is the currently finished frame index
                     val currentFrame = progress?.split(" ")
                         ?.filterNot { it.isBlank() }
                         ?.take(2)
                         ?.lastOrNull()
                         ?.toIntOrNull()
 
+                    // therefore we can can compute the current progress
                     if (currentFrame != null)
                         percent.set((100f * currentFrame / total).roundToInt())
 
-                    emitter.onNext(MetaData(message = progress, progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    // log("onStart  $cmd")
                     emitter.onNext(MetaData(message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    log("onFinish $cmd")
                     emitter.onNext(MetaData(message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
@@ -181,102 +182,194 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
         }
     }
 
-    override fun createVideoFromFrames(
-        context: Context,
-        outputUri: Uri,
-        frameFolder: Uri,
-        keyInt: Int,
-        minKeyInt: Int,
-        gopValue: Int,
-        videoQuality: Int,
-        fps: Int,
-        outputFps: Int,
-        pixelFormat: PixelFormatType,
-        presetType: PresetType,
-        encodeType: EncodeType,
-        threadType: ThreadType,
-        deleteAfter: Boolean,
-        maxrate: Int,
-        bufsize: Int
-    ): Observable<MetaData> {
+    /**
+     * https://ffmpeg.org/ffmpeg-all.html
+     *
+     * https://video.stackexchange.com/a/24684
+     *
+     * The frames in your H.264 video are grouped into units called [GOP]s (Group Of Pictures). Inside these GOPs frames are classified into three types:
+     *
+     * [I-frame]: frame that stores the whole picture
+     * [P-frame]: frame that stores only the changes between the current picture and previous ones
+     * [B-frame]: frame that stores differences with previous or future pictures
+     *
+     * Additionally, I-frames can be classified as IDR frames and non-IDR frames.
+     *
+     * The difference is that frames following an IDR frame cannot reference any frame that comes before the IDR frame, while in the case of a non-IDR frame there are no limitations.
+     *
+     * Every GOP starts with an I-frame, also called a keyframe, but may contain more than one. To create further confusion,
+     * a GOP can start with an IDR frame or with a non-IDR frame. This means that frames in the GOP can sometimes refer to previous GOPs (in this case the GOP is said to be "open"),
+     * and sometimes not (in this case it's closed).
+     *
+     * It's common to see the structure of a GOP represented as in this example: [IBBBPBBBPBBBI]. Here the length of the the GOP is 12 frames, with 3 B-frames between each P-frame.
+     *
+     */
+    data class EncodingConfig(
 
-        var ffmpeg = FFmpeg.getInstance(context)
+        /**
+         * [keyInt] specifies the maximum length of the GOP, so the maximum interval between each keyframe,
+         * which remember that can be either an IDR frame or a non-IDR frame.
+         * I'm not completely sure but I think that by default ffmpeg will require every I-frame to be an IDR frame,
+         * so in practice you can use the terms IDR frame and I-frame interchangeably
+         */
+        val keyInt: Int = 10,
+        /**
+         * min-keyint specifies the minimum length of the GOP.
+         * This is because the encoder might decide that it makes sense to add a keyframe before the keyint value, so you can put a limit.
+         */
+        val minKeyInt: Int = 10,
+
+        /**
+         * gop size
+         */
+        val gopValue: Int? = null,
+
+        /**
+         * crf
+         * Set the quality/size tradeoff for constant-quality (no bitrate target) and constrained-quality (with maximum bitrate target) modes.
+         * Valid range is 0 to 63, higher numbers indicating lower quality and smaller output size. Only used if set; by default only the bitrate target is used.
+         *
+         * 0 for lossless, 23 is default in ffmpeg
+         *
+         * reasonable value 18
+         */
+        @IntRange(from = 0, to = 63)
+        val videoQuality: Int? = null,
+        /**
+         * -r Frame rate of the video.
+         * https://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-July/016273.html
+         */
+        val sourceFrameRate: Int? = null,
+
+        /**
+         * pix_fmts
+         * A ’|’-separated list of pixel format names, such as "pix_fmts=yuv420p|monow|rgb24".
+         */
+        val pixelFormat: PixelFormat = PixelFormat.yuv420p,
+
+        /**
+         * -preset type
+         * Configuration preset. This does some automatic settings based on the general type of the image.
+         *
+         * https://trac.ffmpeg.org/wiki/Encode/H.264
+         */
+        val preset: Preset? = null,
+        /**
+         * -c:v Video codec.
+         */
+        val encoding: Encoding = Encoding.libx264,
+
+        /**
+         * https://trac.ffmpeg.org/wiki/Limiting%20the%20output%20bitrate
+         * specifies a maximum tolerance. this is only used in conjunction with bufsize
+         *
+         * reasonable value for full hd = 8 * 1024
+         */
+        val maxrate: Int? = null,
+
+        /**
+         * specifies the decoder buffer size, which determines the variability of the output bitrate
+         *
+         * reasonable value for full hd = 8 * 1024
+         */
+        val bufsize: Int? = null
+    )
+
+    override fun createVideoFromFrames(context: Context, frameFolder: Uri, outputUri: Uri, config: EncodingConfig, deleteFramesOnComplete: Boolean): Observable<MetaData> {
+
+        val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
-        val observable = Observable.create<MetaData> { emitter ->
+        return Observable.create<MetaData> { emitter ->
 
             if (emitter.isDisposed) {
                 return@create
             }
 
-            //val cores =  Runtime.getRuntime().availableProcessors()
+            val percent = AtomicInteger()
 
-            /**
-             * -i : input
-             * -framerate : frame rate of the video
-             * -crf quality of the output video
-             * -pix_fmt pixel format
-             * -threads thread option
-             * -preset how much time to create video - if selected ultrafast or something like that, it reduces the time but increases the size and loses quality
-             * -r Set frame rate -r option is applied after the video filters - As an output option, duplicate or drop input frames to achieve constant output frame rate fps.
-             * -y overrides if the is an existing file
-             */
-            val cmd = arrayOf(
-                "-y",
-                "-framerate",
-                "$fps",
-                "-i",
-                "${frameFolder.path}/image_%03d.jpg",
-                "-c:v",
-                encodeType.type,
-                "-x264opts",
-                "keyint=$keyInt:min-keyint=$minKeyInt",
-                "-g",
-                "$gopValue",
-//                "-threads",
-//                threadType.type,
-                "-crf",
-                "$videoQuality",
-                "-maxrate:v",
-                "${maxrate}k",
-                "-bufsize:v",
-                "${bufsize}k",
-                "-pix_fmt",
-                pixelFormat.type,
-                "-preset",
-                presetType.type,
-                "-r",
-                "$outputFps",
-                outputUri.path
-            )
+            val total = try {
+                File(frameFolder.path).listFiles().size
+            } catch (e: Exception) {
+                e.printStackTrace()
+                0
+            }
+
+            val startTime = System.currentTimeMillis()
+
+            val cmd = mutableListOf<String>().apply {
+                add("-y")
+
+                config.sourceFrameRate?.let {
+                    add("-r"); add("${config.sourceFrameRate}")
+                }
+
+                add("-threads"); add("${Runtime.getRuntime().availableProcessors()}")
+                add("-i"); add("${frameFolder.path}/image_%03d.jpg")
+                add("-c:v"); add("${config.encoding}")
+                add("-x264opts"); add("keyint=${config.keyInt}:min-keyint=${config.minKeyInt}:no-scenecut")
+
+                config.gopValue?.let {
+                    add("-g"); add("${config.gopValue}")
+                }
+
+                config.videoQuality?.let {
+                    add("-crf"); add("${config.videoQuality}")
+                }
+
+                config.maxrate?.let {
+                    add("-maxrate:v"); add("${config.maxrate}k")
+                }
+
+                config.bufsize?.let {
+                    add("-bufsize:v"); add("${config.bufsize}k")
+                }
+
+                add("-pix_fmt"); add("${config.pixelFormat}")
+
+                config.preset?.let {
+                    add("-preset"); add("${config.preset}")
+                }
+                add("${outputUri.path}")
+
+            }.toTypedArray()
 
             task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
                 override fun onFailure(result: String?) {
-                    loge("FAIL create video with output : $result")
                     emitter.onError(Throwable(result))
+                    //delete failed process folder
+                    deleteFolder(outputUri.path!!)
                 }
 
                 override fun onSuccess(result: String?) {
-                    log("SUCCESS create video with output : $result")
-                    emitter.onNext(MetaData(uri = outputUri, message = "onSuccess: $result"))
+                    emitter.onNext(MetaData(uri = outputUri, message = result))
                 }
 
                 override fun onProgress(progress: String?) {
-                    log("progress create video : $progress")
-                    emitter.onNext(MetaData(message = progress))
+                    // the 2nd parameter is the currently finished frame index
+                    val currentFrame = progress?.split(" ")
+                        ?.filterNot { it.isBlank() }
+                        ?.take(2)
+                        ?.lastOrNull()
+                        ?.toIntOrNull()
+
+                    // therefore we can can compute the current progress
+                    if (currentFrame != null)
+                        percent.set((100f * currentFrame / total).roundToInt())
+
+                    emitter.onNext(MetaData(message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    log("Started command create video : ffmpeg $cmd")
-                    emitter.onNext(MetaData(message = "Started command create video : ffmpeg $cmd"))
+                    emitter.onNext(MetaData(message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    log("Finished command create video: ffmpeg $cmd")
-                    //delete temp files
-                    if (deleteAfter) {
+                    emitter.onNext(MetaData(message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+
+                    if (deleteFramesOnComplete) {
                         val deleteStatus = deleteFolder(frameFolder.path!!)
                         log("Delete temp frame save path status: $deleteStatus")
                     }
@@ -288,8 +381,6 @@ class FFMpegTranscoder(context: Context) : IFFMpegTranscoder {
             if (task?.killRunningProcess() == false)
                 task?.sendQuitSignal()
         }
-
-        return observable
     }
 
     override fun changeKeyframeInterval() {

@@ -53,6 +53,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/extract_frames" />
 
+
+    <com.daimajia.numberprogressbar.NumberProgressBar
+            android:id="@+id/merge_frames_progress"
+            style="@style/NumberProgressBar_Funny_Orange"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="64dp"
+            android:layout_marginEnd="64dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toTopOf="@id/stop_process"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/make_video"
+            tools:visibility="visible" />
+
     <com.google.android.material.button.MaterialButton
             android:id="@+id/stop_process"
             android:layout_width="wrap_content"
@@ -89,7 +104,7 @@
     <androidx.core.widget.NestedScrollView
             android:id="@+id/scrollContainer"
             android:layout_width="0dp"
-            android:layout_height="200dp"
+            android:layout_height="300dp"
             android:layout_marginStart="@dimen/activity_vertical_margin"
             android:layout_marginEnd="@dimen/activity_vertical_margin"
             android:clipToPadding="false"
@@ -102,10 +117,8 @@
                 android:id="@+id/output"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:autoSizeMaxTextSize="12sp"
-                android:autoSizeMinTextSize="8sp"
-                android:autoSizeTextType="uniform"
                 android:gravity="center_horizontal"
+                android:textSize="8sp"
                 tools:text="@tools:sample/lorem/random" />
 
     </androidx.core.widget.NestedScrollView>
