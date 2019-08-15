@@ -10,6 +10,7 @@ import com.exozet.android.core.extensions.isNotNullOrEmpty
 import com.exozet.android.core.extensions.parseExternalStorageFile
 import com.exozet.android.core.extensions.parseFile
 import com.exozet.android.core.extensions.show
+import com.exozet.videoeditor.EncodingConfig
 import com.exozet.videoeditor.FFMpegTranscoder
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -68,34 +69,32 @@ class MainActivity : AppCompatActivity() {
 
         val downloadPath = Uri.parse(getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS).absolutePath)
 
-        val ffMpegTranscoder = FFMpegTranscoder(this)
+        init_ffmpeg.text = "FFmpeg is ${if (FFMpegTranscoder.isSupported(this)) "" else "not"} supported."
 
-        init_ffmpeg.text = "FFmpeg is ${if (ffMpegTranscoder.isSupported(this)) "" else "not"} supported."
+        extractFrames(downloadPath)
 
-        extractFrames(ffMpegTranscoder, downloadPath)
-
-        mergeFrames(ffMpegTranscoder, downloadPath)
+        mergeFrames(downloadPath)
 
         delete_folder.setOnClickListener {
-            logv { "delete folder = ${ffMpegTranscoder.deleteExtractedFrameFolder(frameUri)}" }
+            logv { "delete folder = ${FFMpegTranscoder.deleteExtractedFrameFolder(frameUri)}" }
         }
 
         delete_all.setOnClickListener {
-            logv { "delete all = ${ffMpegTranscoder.deleteAllProcessFiles()}" }
+            logv { "delete all = ${FFMpegTranscoder.deleteAllProcessFiles(this)}" }
         }
     }
 
-    private fun mergeFrames(encoder: FFMpegTranscoder, downloadPath: Uri) {
+    private fun mergeFrames(downloadPath: Uri) {
 
         make_video.setOnClickListener {
 
             output.text = ""
 
-            encoder.createVideoFromFrames(
+            FFMpegTranscoder.createVideoFromFrames(
                 context = this,
                 frameFolder = frameUri,
                 outputUri = "$downloadPath/output_${System.currentTimeMillis()}.mp4".parseFile(),
-                config = FFMpegTranscoder.EncodingConfig(
+                config = EncodingConfig(
                     bufsize = (8 * 1024).toInt(),
                     maxrate = (8 * 1024).toInt(),
                     sourceFrameRate = 30 // for encoding back to original video: 10, however with duplicate frames then
@@ -119,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractFrames(encoder: FFMpegTranscoder, downloadPath: Uri) {
+    private fun extractFrames(downloadPath: Uri) {
 
         val uri = "Download/walkaround.mp4".parseExternalStorageFile()
         logv { "uri=${uri.assetFileExists}" }
@@ -136,7 +135,7 @@ class MainActivity : AppCompatActivity() {
 
             output.text = ""
 
-            encoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = uri, id = "11113", outputDir = downloadPath)
+            FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = uri, id = "11113", outputDir = downloadPath)
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
