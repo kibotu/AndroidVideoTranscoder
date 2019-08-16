@@ -121,8 +121,8 @@ dependencies {
     implementation libs.okhttp3ResponseEcho
     implementation libs.rxpermissions
 
-    implementation libs.ffmpegTranscoder
-    // implementation project(':videoeditor')
+//    implementation libs.ffmpegTranscoder
+     implementation project(':videoeditor')
 
     implementation libs.parceler
     kapt libs.parcelerProcessor

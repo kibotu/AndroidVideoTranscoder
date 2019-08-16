@@ -101,15 +101,15 @@ object FFMpegTranscoder {
                     if (currentFrame != null)
                         percent.set((100f * currentFrame / total).roundToInt())
 
-                    emitter.onNext(MetaData(message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    emitter.onNext(MetaData(message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    emitter.onNext(MetaData(message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
             })
@@ -228,15 +228,15 @@ object FFMpegTranscoder {
                     if (currentFrame != null)
                         percent.set((100f * currentFrame / total).roundToInt())
 
-                    emitter.onNext(MetaData(message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    emitter.onNext(MetaData(message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    emitter.onNext(MetaData(message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(MetaData(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
 
                     if (deleteFramesOnComplete) {
                         val deleteStatus = deleteFolder(frameFolder.path!!)
