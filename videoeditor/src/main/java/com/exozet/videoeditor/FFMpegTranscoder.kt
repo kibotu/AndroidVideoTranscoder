@@ -152,6 +152,21 @@ object FFMpegTranscoder {
 
             val startTime = System.currentTimeMillis()
 
+            /**
+             * -y overrides output file
+             * -r set source frame rate
+             * -threads sets threads
+             * -i input
+             * -c:v encoding, here: libx264
+             * -x264opts .h264 settings, we extract frames by a fixed gop size, (10 would mean out of 30 fps video, we extract 3 frames per second)
+             * no-scenecut means no extra i-frames, since we never change scene during recording
+             * -g fixed gop size; different than dynamic gop size which can be set with keyInt (max gop size interval) and min-keyint (min gop size interval)
+             * -crf sets video quality
+             * -maxrate:v sets max bit-rate
+             * -bufsize:v sets buffer size (manages average bitrate)
+             * -pix_fmt sets pixel format
+             * -preset sets ffmpeg encoding pre-sets, most likely will not end with good results
+             */
             val cmd = mutableListOf<String>().apply {
                 add("-y")
 

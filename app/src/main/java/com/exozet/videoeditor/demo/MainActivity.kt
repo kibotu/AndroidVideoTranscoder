@@ -127,9 +127,9 @@ class MainActivity : AppCompatActivity() {
 
             logv { "extractFramesFromVideo $uri" }
 
-            val increment = 63f / 360f
+            val increment = 63f / 120f
 
-            val times = (0..360).map {
+            val times = (0..120).map {
                 increment * it.toDouble()
             }
 
