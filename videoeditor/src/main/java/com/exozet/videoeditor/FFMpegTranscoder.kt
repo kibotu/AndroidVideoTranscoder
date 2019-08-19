@@ -10,6 +10,7 @@ import nl.bravobit.ffmpeg.FFtask
 import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 object FFMpegTranscoder {
@@ -19,7 +20,7 @@ object FFMpegTranscoder {
      *
      * @param context application context
      */
-    fun isSupported(context: Context): Boolean = FFmpeg.getInstance(context) != null
+    fun isSupported(context: Context): Boolean = FFmpeg.getInstance(context).isSupported
 
     /**
      * @param context application context
@@ -49,7 +50,7 @@ object FFMpegTranscoder {
 
             val startTime = System.currentTimeMillis()
 
-            val localSavePath = "${outputDir ?: internalStoragePath}/postProcess/$id/$startTime/"
+            val localSavePath = "${outputDir ?: "$internalStoragePath/postProcess/$id/$startTime/"}"
 
             //create new folder
             val file = File(localSavePath)
@@ -99,7 +100,7 @@ object FFMpegTranscoder {
 
                     // therefore we can can compute the current progress
                     if (currentFrame != null)
-                        percent.set((100f * currentFrame / total).roundToInt())
+                        percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
 
                     emitter.onNext(MetaData(uri = Uri.fromFile(file), message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
@@ -226,7 +227,7 @@ object FFMpegTranscoder {
 
                     // therefore we can can compute the current progress
                     if (currentFrame != null)
-                        percent.set((100f * currentFrame / total).roundToInt())
+                        percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
 
                     emitter.onNext(MetaData(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }

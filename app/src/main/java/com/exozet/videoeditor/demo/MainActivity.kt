@@ -3,6 +3,7 @@ package com.exozet.videoeditor.demo
 import android.Manifest
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.os.Environment.DIRECTORY_DOWNLOADS
 import android.os.Environment.getExternalStoragePublicDirectory
 import androidx.appcompat.app.AppCompatActivity
@@ -95,8 +96,6 @@ class MainActivity : AppCompatActivity() {
                 frameFolder = frameUri,
                 outputUri = "$downloadPath/output_${System.currentTimeMillis()}.mp4".parseFile(),
                 config = EncodingConfig(
-                    bufsize = (8 * 1024).toInt(),
-                    maxrate = (8 * 1024).toInt(),
                     sourceFrameRate = 30 // for encoding back to original video: 10, however with duplicate frames then
                 )
             ).subscribeOn(Schedulers.computation())
@@ -135,7 +134,7 @@ class MainActivity : AppCompatActivity() {
 
             output.text = ""
 
-            FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = uri, id = "11113", outputDir = downloadPath)
+            FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = uri, id = "11113", outputDir = Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath))
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
