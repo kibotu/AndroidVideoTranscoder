@@ -75,7 +75,7 @@ dependencies {
     implementation libs.rx2Android
     implementation libs.rx2Kotlin
 
-    api 'nl.bravobit:android-ffmpeg:1.1.5'
+    api 'nl.bravobit:android-ffmpeg:1.1.7'
 }
 
 configurations.all {

@@ -122,6 +122,80 @@ object FFMpegTranscoder {
     }
 
     /**
+     * Stream copies and adds few more idr frames.
+     *
+     * @param context application context
+     * @param inputVideo input video
+     * @param outputUri output video
+     */
+    fun transcode(context: Context, inputVideo: Uri, outputUri: Uri): Observable<MetaData> {
+
+        val ffmpeg = FFmpeg.getInstance(context)
+
+        var task: FFtask? = null
+
+        return Observable.create<MetaData> { emitter ->
+
+            if (emitter.isDisposed) {
+                return@create
+            }
+
+            val percent = AtomicInteger()
+
+            val startTime = System.currentTimeMillis()
+
+            // ffmpeg -i example_walkaround.mov -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
+            // ffmpeg -i example_walkaround.mov -vf vidstabtransform=smoothing=30:input="transforms.trf" example_walkaround_stabilized.mp4
+
+            val cmd = mutableListOf<String>().apply {
+                add("-y")
+                add("-threads"); add("${Runtime.getRuntime().availableProcessors()}")
+                add("-i"); add("${inputVideo.path}")
+                add("-vf"); add("deshake") // https://www.ffmpeg.org/ffmpeg-filters.html#deshake
+
+                add("${outputUri.path}")
+
+            }.toTypedArray()
+
+            task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+
+                override fun onFailure(result: String?) {
+                    emitter.onError(Throwable(result))
+                    //delete failed process folder
+                    deleteFolder(outputUri.path!!)
+                }
+
+                override fun onSuccess(result: String?) {
+                    emitter.onNext(MetaData(uri = outputUri, message = result))
+                }
+
+                override fun onProgress(progress: String?) {
+
+                    // get total video duration by parsing 'progress', e.g.:
+                    // Duration: 00:01:03.35, start: 0.000000, bitrate: 4296 kb/s
+                    // check against time, e.g.:
+                    // frame=  165 fps= 10 q=29.0 size=    3584kB time=00:00:05.68 bitrate=5161.0kbits/s speed=0.343x
+                    // where time/duration = percent
+
+                    emitter.onNext(MetaData(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                }
+
+                override fun onStart() {
+                    emitter.onNext(MetaData(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                }
+
+                override fun onFinish() {
+                    emitter.onNext(MetaData(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onComplete()
+                }
+            })
+        }.doOnDispose {
+            if (task?.killRunningProcess() == false)
+                task?.sendQuitSignal()
+        }
+    }
+
+    /**
      * Merges a sequence of images into a video. Returns a stream with [MetaData].
      *
      * @param context application context
@@ -167,6 +241,9 @@ object FFMpegTranscoder {
              * -bufsize:v sets buffer size (manages average bitrate)
              * -pix_fmt sets pixel format
              * -preset sets ffmpeg encoding pre-sets, most likely will not end with good results
+             * -movflags +faststart: Allows video to playback before it is completely downloaded in
+             *  the case of progressive download viewing. Useful if you are hosting the video,
+             *  otherwise superfluous if uploading to a video service like YouTube.
              */
             val cmd = mutableListOf<String>().apply {
                 add("-y")
@@ -201,6 +278,9 @@ object FFMpegTranscoder {
                 config.preset?.let {
                     add("-preset"); add("${config.preset}")
                 }
+
+                add("-movflags"); add("+faststart")
+
                 add("${outputUri.path}")
 
             }.toTypedArray()

@@ -46,8 +46,8 @@
             android:id="@+id/make_video"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Make Video"
-            app:layout_constraintBottom_toTopOf="@+id/stop_process"
+            android:text="Create Video From Frames"
+            app:layout_constraintBottom_toTopOf="@+id/transcode_video"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
@@ -69,6 +69,17 @@
             tools:visibility="visible" />
 
     <com.google.android.material.button.MaterialButton
+            android:id="@+id/transcode_video"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Transcode"
+            app:layout_constraintBottom_toTopOf="@+id/stop_process"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/make_video" />
+
+    <com.google.android.material.button.MaterialButton
             android:id="@+id/stop_process"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -77,15 +88,15 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/make_video" />
+            app:layout_constraintTop_toBottomOf="@+id/transcode_video" />
 
     <com.google.android.material.button.MaterialButton
             android:id="@+id/delete_folder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Delete Folder"
-            app:layout_constraintBottom_toTopOf="@+id/delete_all"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/scrollContainer"
+            app:layout_constraintEnd_toStartOf="@id/delete_all"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/stop_process" />
@@ -98,8 +109,8 @@
             app:layout_constraintBottom_toTopOf="@+id/scrollContainer"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/delete_folder" />
+            app:layout_constraintStart_toEndOf="@id/delete_folder"
+            app:layout_constraintTop_toBottomOf="@+id/stop_process" />
 
     <androidx.core.widget.NestedScrollView
             android:id="@+id/scrollContainer"
