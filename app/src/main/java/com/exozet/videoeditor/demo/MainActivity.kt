@@ -139,8 +139,8 @@ class MainActivity : AppCompatActivity() {
                 frameFolder = frameFolder,
                 outputUri = outputVideo,
                 config = EncodingConfig(
-                    sourceFrameRate = 120f / 63f,
-                    outputFrameRate = 30f
+//                    sourceFrameRate = 120f / 63f, // original video length: 120f / 63f;
+//                    outputFrameRate = 30f
                 ),
                 deleteFramesOnComplete = false
             ).subscribeOn(Schedulers.computation())

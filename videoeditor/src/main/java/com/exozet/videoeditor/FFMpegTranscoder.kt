@@ -258,7 +258,7 @@ object FFMpegTranscoder {
                 add("-r"); add("${config.outputFrameRate}")
 
                 add("-c:v"); add("${config.encoding}")
-//                add("-x264opts"); add("keyint=${config.keyInt}:min-keyint=${config.minKeyInt}:no-scenecut")
+                add("-x264opts"); add("keyint=${config.keyInt}:min-keyint=${config.minKeyInt}:no-scenecut")
 
                 config.gopValue?.let {
                     add("-g"); add("${config.gopValue}")
