@@ -55,11 +55,18 @@ data class EncodingConfig(
      */
     @IntRange(from = 0, to = 63)
     val videoQuality: Int? = null,
+
     /**
-     * -r Frame rate of the video.
+     * -framerate input Frame rate of the video.
      * https://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-July/016273.html
      */
-    val sourceFrameRate: Int? = null,
+    val sourceFrameRate: Float? = 30000f/1001f,
+
+    /**
+     * -r output Frame rate of the video.
+     * https://video.stackexchange.com/a/13074
+     */
+    val outputFrameRate: Float? = 30000f/1001f,
 
     /**
      * pix_fmts

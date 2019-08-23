@@ -139,12 +139,20 @@ class MainActivity : AppCompatActivity() {
                 frameFolder = frameFolder,
                 outputUri = outputVideo,
                 config = EncodingConfig(
-                    sourceFrameRate = 30 // translates into every input image is a frame in new video
-                )
+                    sourceFrameRate = 120f / 63f,
+                    outputFrameRate = 30f
+                ),
+                deleteFramesOnComplete = false
             ).subscribeOn(Schedulers.computation())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    logv { "extract frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" }
+
+                    merge_frames_progress.show()
+                    merge_frames_progress.progress = it.progress
+
+                    logv { "extract frames $it" }
+
+                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
 
                 }, {
                     logv { "creating video fails ${it.message}" }
