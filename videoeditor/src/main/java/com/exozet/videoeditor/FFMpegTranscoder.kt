@@ -11,7 +11,6 @@ import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
-import kotlin.math.roundToInt
 
 object FFMpegTranscoder {
 
@@ -30,7 +29,7 @@ object FFMpegTranscoder {
      * @param outputDir optional - output directory, if not provided internal storage will be used
      * @param photoQuality quality of extracted frames - Effective range for JPEG is 2-31 with 31 being the worst quality
      */
-    fun extractFramesFromVideo(context: Context, frameTimes: List<String>, inputVideo: Uri, id: String, outputDir: Uri?, @IntRange(from = 1, to = 31) photoQuality: Int = 5): Observable<MetaData> {
+    fun extractFramesFromVideo(context: Context, frameTimes: List<String>, inputVideo: Uri, id: String, outputDir: Uri?, @IntRange(from = 1, to = 31) photoQuality: Int = 5): Observable<Progress> {
 
         val ffmpeg = FFmpeg.getInstance(context)
 
@@ -38,7 +37,7 @@ object FFMpegTranscoder {
 
         val internalStoragePath: String = context.filesDir.absolutePath
 
-        return Observable.create<MetaData> { emitter ->
+        return Observable.create<Progress> { emitter ->
 
             if (emitter.isDisposed) {
                 return@create
@@ -87,7 +86,7 @@ object FFMpegTranscoder {
                 }
 
                 override fun onSuccess(result: String?) {
-                    emitter.onNext(MetaData(uri = Uri.fromFile(file)))
+                    emitter.onNext(Progress(uri = Uri.fromFile(file)))
                 }
 
                 override fun onProgress(progress: String?) {
@@ -102,15 +101,15 @@ object FFMpegTranscoder {
                     if (currentFrame != null)
                         percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
 
-                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    emitter.onNext(MetaData(uri = Uri.fromFile(file), message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
             })
@@ -128,13 +127,13 @@ object FFMpegTranscoder {
      * @param inputVideo input video
      * @param outputUri output video
      */
-    fun transcode(context: Context, inputVideo: Uri, outputUri: Uri): Observable<MetaData> {
+    fun transcode(context: Context, inputVideo: Uri, outputUri: Uri): Observable<Progress> {
 
         val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
-        return Observable.create<MetaData> { emitter ->
+        return Observable.create<Progress> { emitter ->
 
             if (emitter.isDisposed) {
                 return@create
@@ -166,7 +165,7 @@ object FFMpegTranscoder {
                 }
 
                 override fun onSuccess(result: String?) {
-                    emitter.onNext(MetaData(uri = outputUri, message = result))
+                    emitter.onNext(Progress(uri = outputUri, message = result))
                 }
 
                 override fun onProgress(progress: String?) {
@@ -177,15 +176,15 @@ object FFMpegTranscoder {
                     // frame=  165 fps= 10 q=29.0 size=    3584kB time=00:00:05.68 bitrate=5161.0kbits/s speed=0.343x
                     // where time/duration = percent
 
-                    emitter.onNext(MetaData(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    emitter.onNext(MetaData(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    emitter.onNext(MetaData(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
             })
@@ -196,7 +195,7 @@ object FFMpegTranscoder {
     }
 
     /**
-     * Merges a sequence of images into a video. Returns a stream with [MetaData].
+     * Merges a sequence of images into a video. Returns a stream with [Progress].
      *
      * @param context application context
      * @param frameFolder extracted frames directory
@@ -204,13 +203,13 @@ object FFMpegTranscoder {
      * @param [EncodingConfig] Encoding configurations.
      * @param deleteFramesOnComplete removes image sequence directory after successful completion.
      */
-    fun createVideoFromFrames(context: Context, frameFolder: Uri, outputUri: Uri, config: EncodingConfig, deleteFramesOnComplete: Boolean = true): Observable<MetaData> {
+    fun createVideoFromFrames(context: Context, frameFolder: Uri, outputUri: Uri, config: EncodingConfig, deleteFramesOnComplete: Boolean = true): Observable<Progress> {
 
         val ffmpeg = FFmpeg.getInstance(context)
 
         var task: FFtask? = null
 
-        return Observable.create<MetaData> { emitter ->
+        return Observable.create<Progress> { emitter ->
 
             if (emitter.isDisposed) {
                 return@create
@@ -294,7 +293,7 @@ object FFMpegTranscoder {
                 }
 
                 override fun onSuccess(result: String?) {
-                    emitter.onNext(MetaData(uri = outputUri, message = result))
+                    emitter.onNext(Progress(uri = outputUri, message = result))
                 }
 
                 override fun onProgress(progress: String?) {
@@ -309,15 +308,15 @@ object FFMpegTranscoder {
                     if (currentFrame != null)
                         percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
 
-                    emitter.onNext(MetaData(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onStart() {
-                    emitter.onNext(MetaData(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                 }
 
                 override fun onFinish() {
-                    emitter.onNext(MetaData(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
 
                     if (deleteFramesOnComplete) {
                         val deleteStatus = deleteFolder(frameFolder.path!!)
