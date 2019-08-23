@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
+# ffmpeg vidstab installation guide:
+# https://github.com/varenc/homebrew-ffmpeg#installation-and-usage
+#
 # https://ffmpeg.org/ffmpeg-filters.html#vidstabdetect-1
+# https://github.com/georgmartius/vid.stab
 #
 # shakiness
 #   Set how shaky the video is and how quick the camera is. It accepts an integer in the range 1-10,
@@ -17,6 +21,8 @@
 #   For example a number of 10 means that 21 frames are used (10 in the past and 10 in the future)
 #   to smoothen the motion in the video. A larger value leads to a smoother video,
 #   but limits the acceleration of the camera (pan/tilt movements). 0 is a special case where a static camera is simulated.
-
+#
+# an
+#   removes audio track
 ffmpeg -i source_video.mp4 -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
-ffmpeg -i source_video.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" stabilized_vidstab.mp4
+ffmpeg -i source_video.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" -an stabilized_vidstab.mp4
