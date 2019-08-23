@@ -3,14 +3,13 @@ package com.exozet.videoeditor.demo
 import android.Manifest
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.os.Environment.DIRECTORY_DOWNLOADS
-import android.os.Environment.getExternalStoragePublicDirectory
 import androidx.appcompat.app.AppCompatActivity
-import com.exozet.android.core.extensions.*
+import com.exozet.android.core.extensions.isNotNullOrEmpty
+import com.exozet.android.core.extensions.onClick
+import com.exozet.android.core.extensions.parseExternalStorageFile
+import com.exozet.android.core.extensions.show
 import com.exozet.videoeditor.EncodingConfig
 import com.exozet.videoeditor.FFMpegTranscoder
-import com.exozet.videoeditor.FFMpegTranscoder.transcode
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -140,22 +139,15 @@ class MainActivity : AppCompatActivity() {
                 frameFolder = frameFolder,
                 outputUri = outputVideo,
                 config = EncodingConfig(
-                    sourceFrameRate = 30 // for encoding back to original video: 10, however with duplicate frames then
+                    sourceFrameRate = 30 // translates into every input image is a frame in new video
                 )
             ).subscribeOn(Schedulers.computation())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-
-                    merge_frames_progress.show()
-                    merge_frames_progress.progress = it.progress
-
-                    logv { "merge frames $it" }
-
-                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+                    logv { "extract frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" }
 
                 }, {
                     logv { "creating video fails ${it.message}" }
-                    it.printStackTrace()
                 }, { logv { "createVideoFromFrames on complete " } })
                 .addTo(subscription)
         }
