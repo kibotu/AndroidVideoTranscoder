@@ -24,13 +24,15 @@
 #
 # an
 #   removes audio track
-
+#
 ffmpeg -i source_video.mp4 -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
 ffmpeg -i source_video.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" -an stabilized_vidstab.mp4
-
 
 ffmpeg -i output_120_frames.mp4 -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
 ffmpeg -i output_120_frames.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" -an output_120_frames_stabilized_vidstab.mp4
 
 ffmpeg -i output_360_frames.mp4 -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
 ffmpeg -i output_360_frames.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" -an output_360_frames_stabilized_vidstab.mp4
+
+ffmpeg -i output_duplicated_frames.mp4 -vf vidstabdetect=shakiness=10:accuracy=15 -f null -
+ffmpeg -i output_duplicated_frames.mp4 -vf vidstabtransform=smoothing=30:input="transforms.trf" -an output_duplicated_frames_stabilized_vidstab.mp4
