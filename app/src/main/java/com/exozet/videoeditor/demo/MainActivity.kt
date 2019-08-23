@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             output.text = ""
 
             FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
-                .subscribeOn(Schedulers.newThread())
+                .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
 
@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity() {
                 inputVideo = inputVideo,
                 outputUri = outputVideo
             )
-                .subscribeOn(Schedulers.computation())
+                .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
 
