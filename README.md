@@ -15,8 +15,6 @@
  		)
    		.subscribeOn(Schedulers.io())
    		.observeOn(AndroidSchedulers.mainThread())
-   		.subscribeOn(Schedulers.computation())
-   		.observeOn(AndroidSchedulers.mainThread())
    		.subscribe(
         	{ logv { "extract frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
 	      	{ logv { "extracting frames failed ${it.message}" }}, 
@@ -34,7 +32,7 @@
             	sourceFrameRate = 30 // every source image is a frame
         	)
       	)
-        .subscribeOn(Schedulers.computation())
+        .subscribeOn(Schedulers.io())
         .observeOn(AndroidSchedulers.mainThread())
         .subscribe(
         	{ logv { "merging frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
