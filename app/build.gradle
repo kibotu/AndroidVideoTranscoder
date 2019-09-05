@@ -12,7 +12,7 @@ android {
     defaultConfig {
         multiDexEnabled true
         applicationId "com.exozet.videoeditor.demo"
-        minSdkVersion 16
+        minSdkVersion 21
         targetSdkVersion targetSdkVer
         versionCode 1
         versionName "1.0"
@@ -128,6 +128,9 @@ dependencies {
     kapt libs.parcelerProcessor
 
     implementation libs.numberprogressbar
+
+    implementation 'org.jcodec:jcodec:0.2.3'
+    implementation 'org.jcodec:jcodec-android:0.2.3'
 }
 
 // region override support library version
@@ -138,6 +141,8 @@ configurations.all {
     resolutionStrategy.force libs.supportAppCompat
     resolutionStrategy.force libs.appCompatResources
     resolutionStrategy.force libs.constraintLayout
+    resolutionStrategy.force 'com.google.code.findbugs:jsr305:3.0.2'
+
 }
 
 // endregion

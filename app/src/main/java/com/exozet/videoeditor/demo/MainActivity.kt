@@ -4,11 +4,9 @@ import android.Manifest
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.exozet.android.core.extensions.isNotNullOrEmpty
 import com.exozet.android.core.extensions.onClick
 import com.exozet.android.core.extensions.parseExternalStorageFile
-import com.exozet.android.core.extensions.show
-import com.exozet.videoeditor.EncodingConfig
+import com.exozet.mcvideoeditor.MediaCodecTranscoder
 import com.exozet.videoeditor.FFMpegTranscoder
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -22,7 +20,6 @@ import net.kibotu.logger.Logger.logv
 import net.kibotu.logger.Logger.logw
 import java.io.IOException
 import java.io.InputStream
-import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity() {
@@ -88,41 +85,89 @@ class MainActivity : AppCompatActivity() {
 
         extract_frames.onClick {
 
-            logv { "extractFramesFromVideo $inputVideo -> $frameFolder" }
-
             val increment = 63f / 120f
 
             val times = (0..120).map {
                 increment * it.toDouble()
             }
 
-            output.text = ""
-
-            FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
+            MediaCodecTranscoder.extractFramesFromVideo(frameTimes = times, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-
-                    extract_frames_progress.show()
-                    extract_frames_progress.progress = it.progress
-
                     logv { "extract frames $it" }
-
-                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
-
-                    if (it.uri?.toString().isNotNullOrEmpty()) {
-                        // logv { "${it.uri}" }
-                    }
-
 
                 }, {
                     logv { "extracting frames fail ${it.message}" }
 
-                    it.printStackTrace()
                 }, {
                     logv { "extractFramesFromVideo on complete" }
                 })
                 .addTo(subscription)
+
+            /*val jcodec = JCodecExtractImages()
+
+            jcodec.doInBackground()
+
+            val times = ArrayList<Int>()
+            var i = 0
+            while (i < 60000) {
+                times.add(i)
+                i += 500
+            }
+
+            val threadPoolExecutor = Executors.newFixedThreadPool(4)
+
+
+            Flowable.fromIterable(times)
+                .parallel(times.size)
+                .runOn(Schedulers.from(threadPoolExecutor))
+                .sequential()
+                .forEach { data ->
+
+                    Log.e(
+                        "sssss"," forEach, thread is " +
+                                Thread.currentThread().name
+                    )
+                }
+*/
+            /*  logv { "extractFramesFromVideo $inputVideo -> $frameFolder" }
+
+              val increment = 63f / 120f
+
+              val times = (0..120).map {
+                  increment * it.toDouble()
+              }
+
+              output.text = ""
+
+              FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
+                  .subscribeOn(Schedulers.io())
+                  .observeOn(AndroidSchedulers.mainThread())
+                  .subscribe({
+
+                      extract_frames_progress.show()
+                      extract_frames_progress.progress = it.progress
+
+                      logv { "extract frames $it" }
+
+                      output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+                      if (it.uri?.toString().isNotNullOrEmpty()) {
+                          // logv { "${it.uri}" }
+                      }
+
+
+                  }, {
+                      logv { "extracting frames fail ${it.message}" }
+
+                      it.printStackTrace()
+                  }, {
+                      logv { "extractFramesFromVideo on complete" }
+                  })
+                  .addTo(subscription)*/
+
+
         }
     }
 
@@ -130,7 +175,7 @@ class MainActivity : AppCompatActivity() {
 
         make_video.onClick {
 
-            logv { "mergeFrames $frameFolder -> $outputVideo" }
+            /*logv { "mergeFrames $frameFolder -> $outputVideo" }
 
             output.text = ""
 
@@ -157,7 +202,13 @@ class MainActivity : AppCompatActivity() {
                 }, {
                     logv { "creating video fails ${it.message}" }
                 }, { logv { "createVideoFromFrames on complete " } })
-                .addTo(subscription)
+                .addTo(subscription)*/
+
+            val mediaCodecTest = MediaCodecExampleTest()
+
+            mediaCodecTest.testCreateVideo()
+            //jcodecTest.imageToMP4(bitmaps)
+
         }
     }
 
