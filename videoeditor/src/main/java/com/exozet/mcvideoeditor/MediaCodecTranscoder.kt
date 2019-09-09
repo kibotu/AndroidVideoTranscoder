@@ -16,16 +16,9 @@ object MediaCodecTranscoder {
         outputDir: Uri?,
         @IntRange(from = 1, to = 100) photoQuality: Int = 100
     ): Observable<Progress> {
-
         val mediaCodec = MediaCodecExtractImages()
 
-        mediaCodec.extractMpegFrames(inputVideo,frameTimes, outputDir, photoQuality)
-
-        return Observable.create<Progress> { emitter ->
-
-
-        }
-
+        return mediaCodec.extractMpegFrames(inputVideo,frameTimes, outputDir, photoQuality)
         }
 
 }

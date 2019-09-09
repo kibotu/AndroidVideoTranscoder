@@ -3,9 +3,11 @@ package com.exozet.videoeditor.demo
 import android.Manifest
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.exozet.android.core.extensions.onClick
 import com.exozet.android.core.extensions.parseExternalStorageFile
+import com.exozet.android.core.extensions.show
 import com.exozet.mcvideoeditor.MediaCodecTranscoder
 import com.exozet.videoeditor.FFMpegTranscoder
 import com.tbruyelle.rxpermissions2.RxPermissions
@@ -18,6 +20,7 @@ import net.kibotu.logger.LogcatLogger
 import net.kibotu.logger.Logger
 import net.kibotu.logger.Logger.logv
 import net.kibotu.logger.Logger.logw
+import net.kibotu.logger.TAG
 import java.io.IOException
 import java.io.InputStream
 
@@ -95,13 +98,17 @@ class MainActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
-                    logv { "extract frames $it" }
+                    Log.v(TAG,"extract frames $it")
+                    extract_frames_progress.show()
+                    extract_frames_progress.progress = it.progress
 
                 }, {
-                    logv { "extracting frames fail ${it.message}" }
+                    Log.v(TAG,"\"extracting frames fail ${it.message}")
+
 
                 }, {
-                    logv { "extractFramesFromVideo on complete" }
+                    Log.v(TAG,"extractFramesFromVideo on complete")
+
                 })
                 .addTo(subscription)
 
