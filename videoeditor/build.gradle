@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
 
-        minSdkVersion 16
+        minSdkVersion 18
         targetSdkVersion targetSdkVer
         versionCode 1
         versionName "1.0"
@@ -74,7 +74,7 @@ dependencies {
     implementation libs.rx2java
     implementation libs.rx2Android
     implementation libs.rx2Kotlin
-    implementation libs.androidFfmpeg
+    compileOnly libs.androidFfmpeg
 }
 
 configurations.all {

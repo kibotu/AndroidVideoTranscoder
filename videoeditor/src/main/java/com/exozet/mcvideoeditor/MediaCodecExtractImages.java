@@ -56,6 +56,10 @@ package com.exozet.mcvideoeditor;
 //20140212: eliminate byte swap
 
 /**
+ * To check how to convert time video frame times to frames number, go to getDesiredFrames() method
+ */
+
+/**
  * Extract frames from an MP4 using MediaExtractor, MediaCodec, and GLES.  Put a .mp4 file
  * in "/sdcard/source.mp4" and look for output files named "/sdcard/frame-XX.png".
  * <p>
@@ -78,6 +82,8 @@ public class MediaCodecExtractImages {
      * you're extracting frames you don't want black bars.
      */
     public Observable<Progress> extractMpegFrames(Uri inputVideo, List<Double> timeInSec, Uri outputDir, int photoQuality){
+
+        long startTime = System.currentTimeMillis();
 
         return new Observable<Progress>(){
 
@@ -130,6 +136,7 @@ public class MediaCodecExtractImages {
                                 " Total frame count = " + totalFrame);
                     }
 
+                    //Can't use timeStamp directly, instead we need to get which frame we need to get
                     List<Integer> desiredFrames = getDesiredFrames(timeInSec,frameRate);
 
                     if (VERBOSE) {
@@ -146,7 +153,7 @@ public class MediaCodecExtractImages {
                     decoder.configure(format, outputSurface.getSurface(), null, 0);
                     decoder.start();
 
-                    doExtract(extractor, trackIndex, decoder, outputSurface,desiredFrames,outputPath,photoQuality,observer,totalFrame);
+                    doExtract(extractor, trackIndex, decoder, outputSurface,desiredFrames,outputPath,photoQuality,observer,totalFrame, startTime);
 
                 } catch (Exception e){
                     Log.e(TAG, "Something goes wrong while extracting images "+ e);
@@ -173,17 +180,25 @@ public class MediaCodecExtractImages {
         };
     }
 
+    /**
+     * @param timeInSec = desired video frame times in sec
+     * @param frameRate = video frame rate
+     * @return list of frame numbers which points exact frame in given time
+     *
+     *While using mediaCodec we can't seek to desired time, instead of that need to figure out which frame we needed
+     * to calculate that, need to multiply desired frame time with frame rate
+     *
+     * Example = Want to get the frame at 6.34 sec. We have a 30 frame rate video
+     * 6.34*30 = 190,2 th frame -> we need int or long number so need to round it down
+     */
     private List<Integer> getDesiredFrames(List<Double> timeInSec, int frameRate) {
 
         ArrayList<Integer> desiredFrames = new ArrayList<>();
 
         for (int i = 0; i<timeInSec.size();i++){
-
             int desiredTimeFrames = (int) (timeInSec.get(i) * frameRate);
-
             desiredFrames.add(desiredTimeFrames);
         }
-
         return desiredFrames;
     }
 
@@ -213,7 +228,7 @@ public class MediaCodecExtractImages {
      * Work loop.
      */
     static void doExtract(MediaExtractor extractor, int trackIndex, MediaCodec decoder,
-                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, Observer<? super Progress> observer, int totalFrame) throws IOException {
+                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, Observer<? super Progress> observer, int totalFrame, long startTime) throws IOException {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
@@ -297,7 +312,7 @@ public class MediaCodecExtractImages {
                     decoder.releaseOutputBuffer(decoderStatus, doRender);
                     if (doRender) {
                         if (VERBOSE) Log.d(TAG, "awaiting decode of frame " + decodeCount);
-                        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),null,null,totalFrame));
+                        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),null,null, System.currentTimeMillis() - startTime));
 
                         if (desiredFrames.contains(decodeCount)) {
                             outputSurface.awaitNewImage();
@@ -324,7 +339,7 @@ public class MediaCodecExtractImages {
         Log.d(TAG, "Saving " + numSaved + " frames took " +
                 (frameSaveTime / numSaved / 1000) + " us per frame");
 
-        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),"total saved frame = " + numSaved,null,totalFrame));
+        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),"total saved frame = " + numSaved,null,System.currentTimeMillis() - startTime));
 
         observer.onComplete();
     }

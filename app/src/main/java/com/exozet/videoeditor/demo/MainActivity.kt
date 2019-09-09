@@ -5,11 +5,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import com.exozet.android.core.extensions.isNotNullOrEmpty
 import com.exozet.android.core.extensions.onClick
 import com.exozet.android.core.extensions.parseExternalStorageFile
 import com.exozet.android.core.extensions.show
 import com.exozet.mcvideoeditor.MediaCodecTranscoder
+import com.exozet.mcvideoeditor.MediaConfig
+import com.exozet.videoeditor.EncodingConfig
 import com.exozet.videoeditor.FFMpegTranscoder
+import com.exozet.videoeditor.Progress
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -23,6 +27,7 @@ import net.kibotu.logger.Logger.logw
 import net.kibotu.logger.TAG
 import java.io.IOException
 import java.io.InputStream
+import kotlin.math.roundToInt
 
 
 class MainActivity : AppCompatActivity() {
@@ -94,86 +99,10 @@ class MainActivity : AppCompatActivity() {
                 increment * it.toDouble()
             }
 
-            MediaCodecTranscoder.extractFramesFromVideo(frameTimes = times, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    Log.v(TAG,"extract frames $it")
-                    extract_frames_progress.show()
-                    extract_frames_progress.progress = it.progress
 
-                }, {
-                    Log.v(TAG,"\"extracting frames fail ${it.message}")
+            //extractByFFMpeg(inputVideo,frameFolder)
 
-
-                }, {
-                    Log.v(TAG,"extractFramesFromVideo on complete")
-
-                })
-                .addTo(subscription)
-
-            /*val jcodec = JCodecExtractImages()
-
-            jcodec.doInBackground()
-
-            val times = ArrayList<Int>()
-            var i = 0
-            while (i < 60000) {
-                times.add(i)
-                i += 500
-            }
-
-            val threadPoolExecutor = Executors.newFixedThreadPool(4)
-
-
-            Flowable.fromIterable(times)
-                .parallel(times.size)
-                .runOn(Schedulers.from(threadPoolExecutor))
-                .sequential()
-                .forEach { data ->
-
-                    Log.e(
-                        "sssss"," forEach, thread is " +
-                                Thread.currentThread().name
-                    )
-                }
-*/
-            /*  logv { "extractFramesFromVideo $inputVideo -> $frameFolder" }
-
-              val increment = 63f / 120f
-
-              val times = (0..120).map {
-                  increment * it.toDouble()
-              }
-
-              output.text = ""
-
-              FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
-                  .subscribeOn(Schedulers.io())
-                  .observeOn(AndroidSchedulers.mainThread())
-                  .subscribe({
-
-                      extract_frames_progress.show()
-                      extract_frames_progress.progress = it.progress
-
-                      logv { "extract frames $it" }
-
-                      output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
-
-                      if (it.uri?.toString().isNotNullOrEmpty()) {
-                          // logv { "${it.uri}" }
-                      }
-
-
-                  }, {
-                      logv { "extracting frames fail ${it.message}" }
-
-                      it.printStackTrace()
-                  }, {
-                      logv { "extractFramesFromVideo on complete" }
-                  })
-                  .addTo(subscription)*/
-
+            extactByMediaCodec(times,inputVideo,frameFolder)
 
         }
     }
@@ -182,39 +111,9 @@ class MainActivity : AppCompatActivity() {
 
         make_video.onClick {
 
-            /*logv { "mergeFrames $frameFolder -> $outputVideo" }
+            //mergeByFFMpeg(frameFolder,outputVideo)
 
-            output.text = ""
-
-            FFMpegTranscoder.createVideoFromFrames(
-                context = this,
-                frameFolder = frameFolder,
-                outputUri = outputVideo,
-                config = EncodingConfig(
-//                    sourceFrameRate = 120f / 63f, // original video length: 120f / 63f;
-//                    outputFrameRate = 30f
-                ),
-                deleteFramesOnComplete = false
-            ).subscribeOn(Schedulers.computation())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-
-                    merge_frames_progress.show()
-                    merge_frames_progress.progress = it.progress
-
-                    logv { "extract frames $it" }
-
-                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
-
-                }, {
-                    logv { "creating video fails ${it.message}" }
-                }, { logv { "createVideoFromFrames on complete " } })
-                .addTo(subscription)*/
-
-            val mediaCodecTest = MediaCodecExampleTest()
-
-            mediaCodecTest.testCreateVideo()
-            //jcodecTest.imageToMP4(bitmaps)
+            mergeByMediaCodec(frameFolder,outputVideo)
 
         }
     }
@@ -245,6 +144,150 @@ class MainActivity : AppCompatActivity() {
                 .addTo(subscription)
         }
     }
+
+    //region ffmpeg
+
+    private fun extractByFFMpeg(inputVideo: Uri, frameFolder: Uri) {
+        logv { "extractFramesFromVideo $inputVideo -> $frameFolder" }
+
+        val increment = 63f / 120f
+
+        val times = (0..120).map {
+            increment * it.toDouble()
+        }
+
+        output.text = ""
+
+        FFMpegTranscoder.extractFramesFromVideo(context = this, frameTimes = times.map { it.toString() }, inputVideo = inputVideo, id = "12345", outputDir = frameFolder)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+
+                extract_frames_progress.show()
+                extract_frames_progress.progress = it.progress
+
+                logv { "extract frames $it" }
+
+                output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+                if (it.uri?.toString().isNotNullOrEmpty()) {
+                    // logv { "${it.uri}" }
+                }
+
+
+            }, {
+                logv { "extracting frames fail ${it.message}" }
+
+                it.printStackTrace()
+            }, {
+                logv { "extractFramesFromVideo on complete" }
+            })
+            .addTo(subscription)
+    }
+
+    private fun mergeByFFMpeg(frameFolder: Uri, outputVideo: Uri) {
+        logv { "mergeFrames $frameFolder -> $outputVideo" }
+
+        output.text = ""
+
+        FFMpegTranscoder.createVideoFromFrames(
+            context = this,
+            frameFolder = frameFolder,
+            outputUri = outputVideo,
+            config = EncodingConfig(
+//                    sourceFrameRate = 120f / 63f, // original video length: 120f / 63f;
+//                    outputFrameRate = 30f
+            ),
+            deleteFramesOnComplete = false
+        ).subscribeOn(Schedulers.computation())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+
+                merge_frames_progress.show()
+                merge_frames_progress.progress = it.progress
+
+                logv { "extract frames $it" }
+
+                output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+            }, {
+                logv { "creating video fails ${it.message}" }
+            }, { logv { "createVideoFromFrames on complete " } })
+            .addTo(subscription)
+    }
+    //endregion
+
+    //region MediaCodec
+
+
+    private fun extactByMediaCodec(
+        times: List<Double>,
+        inputVideo: Uri,
+        frameFolder: Uri
+    ) {
+        var progress: Progress? = null
+
+        MediaCodecTranscoder.extractFramesFromVideo(
+            context = this,
+            frameTimes = times,
+            inputVideo = inputVideo,
+            id = "12345",
+            outputDir = frameFolder
+        )
+            .subscribeOn(Schedulers.computation())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+                Log.v(TAG, "1 extract frames $it")
+                progress = it
+                extract_frames_progress.show()
+                extract_frames_progress.progress = it.progress
+
+            }, {
+                Log.v(TAG, "\"1 extracting frames fail ${it.message} $progress")
+
+
+            }, {
+                Log.v(TAG, "1 extractFramesFromVideo on complete $progress")
+
+            })
+            .addTo(subscription)
+
+    }
+    private fun mergeByMediaCodec(frameFolder: Uri, outputVideo: Uri) {
+
+        MediaCodecTranscoder.createVideoFromFrames(
+            frameFolder = frameFolder,
+            outputUri = outputVideo,
+            config = MediaConfig(
+                //bitRate = 16000000,
+               // frameRate = 30,
+                //iFrameInterval = 1,
+               // mimeType = "video/avc"
+            ),
+            deleteFramesOnComplete = false
+        )
+            .subscribeOn(Schedulers.computation())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+                merge_frames_progress.show()
+                merge_frames_progress.progress = it.progress
+
+                logv { "merge frames $it" }
+
+                output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+            }, {
+                logv { "creating video fails ${it.message}" }
+
+            }, {
+                logv { "createVideoFromFrames on complete "}
+            })
+            .addTo(subscription)
+
+
+    }
+
+    //endregion
 
     override fun onDestroy() {
         stopProcessing()
