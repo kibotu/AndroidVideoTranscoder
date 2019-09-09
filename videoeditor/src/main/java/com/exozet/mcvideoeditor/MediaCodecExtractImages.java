@@ -74,7 +74,7 @@ public class MediaCodecExtractImages {
      * it by adjusting the GL viewport to get letterboxing or pillarboxing, but generally if
      * you're extracting frames you don't want black bars.
      */
-    public void extractMpegFrames(Uri inputVideo, List<Double> timesInMillis, Uri outputDir, int photoQuality) throws IOException {
+    public void extractMpegFrames(Uri inputVideo, List<Double> timeInSec, Uri outputDir, int photoQuality) throws IOException {
         String inputFilePath = inputVideo.getPath();
         String outputPath = outputDir.getPath();
 
@@ -117,7 +117,7 @@ public class MediaCodecExtractImages {
                         "Total duration is in microSec " + duration);
             }
 
-            List<Long> desiredFrames = getDesiredFrames(timesInMillis,frameRate);
+            List<Integer> desiredFrames = getDesiredFrames(timeInSec,frameRate);
 
             if (VERBOSE) {
                 Log.d(TAG, "Desired frames list is " + desiredFrames.toString());
@@ -152,16 +152,14 @@ public class MediaCodecExtractImages {
         }
     }
 
-    private List<Long> getDesiredFrames(List<Double> timesInMillis, int frameRate) {
+    private List<Integer> getDesiredFrames(List<Double> timeInSec, int frameRate) {
 
-        //1 sec is 1000 ms
-        int miliseconds = 1000;
+        ArrayList<Integer> desiredFrames = new ArrayList<>();
 
-        ArrayList<Long> desiredFrames = new ArrayList<>();
+        for (int i = 0; i<timeInSec.size();i++){
 
-        for (int i = 0; i<timesInMillis.size();i++){
+            int desiredTimeFrames = (int) (timeInSec.get(i) * frameRate);
 
-            long desiredTimeFrames = (long) ((timesInMillis.get(i) * frameRate)/ miliseconds);
             desiredFrames.add(desiredTimeFrames);
         }
 
@@ -194,7 +192,7 @@ public class MediaCodecExtractImages {
      * Work loop.
      */
     static void doExtract(MediaExtractor extractor, int trackIndex, MediaCodec decoder,
-                          CodecOutputSurface outputSurface, List<Long> desiredFrames,String outputPath,int photoQuality) throws IOException {
+                          CodecOutputSurface outputSurface, List<Integer> desiredFrames,String outputPath,int photoQuality) throws IOException {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
@@ -280,7 +278,7 @@ public class MediaCodecExtractImages {
                         if (VERBOSE) Log.d(TAG, "awaiting decode of frame " + decodeCount);
 
 
-                        if (desiredFrames.contains(Long.valueOf(decodeCount))) {
+                        if (desiredFrames.contains(decodeCount)) {
                             outputSurface.awaitNewImage();
                             outputSurface.drawImage(true);
                             File outputFile = new File(outputPath,

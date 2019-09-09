@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
 
         init_ffmpeg.text = "FFmpeg is ${if (FFMpegTranscoder.isSupported(this)) "" else "not"} supported."
 
-        val frameFolder = "Download/processing/".parseExternalStorageFile()
+        val frameFolder = "Download/process/".parseExternalStorageFile()
         val inputVideo = "Download/walkaround.mp4".parseExternalStorageFile()
         val outputVideo = "Download/output_${System.currentTimeMillis()}.mp4".parseExternalStorageFile()
 
