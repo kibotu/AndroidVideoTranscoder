@@ -5,6 +5,7 @@ import androidx.fragment.app.FragmentActivity
 import com.exozet.android.core.extensions.onClick
 import com.exozet.android.core.extensions.parseExternalStorageFile
 import com.exozet.transcoder.ffmpeg.Progress
+import com.exozet.transcoder.mcvideoeditor.MediaCodecTranscoder
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
@@ -37,9 +38,6 @@ class DemoActivity : FragmentActivity() {
         extract_frames.onClick {
 
             var progress: Progress? = null
-
-
-            com.exozet.transcoder.ffmpeg.
 
             MediaCodecTranscoder.extractFramesFromVideo(
                 context = this,

@@ -22,6 +22,8 @@ import java.util.concurrent.CountDownLatch;
 import io.reactivex.Completable;
 import io.reactivex.disposables.Disposable;
 
+import static com.exozet.transcoder.ffmpeg.DebugExtensions.log;
+
 public class MediaCodecCreateVideo {
     private static final String TAG = MediaCodecCreateVideo.class.getSimpleName();
 
@@ -117,17 +119,17 @@ public class MediaCodecCreateVideo {
 
         MediaCodecInfo codecInfo = selectCodec(mimeType);
         if (codecInfo == null) {
-            Log.e(TAG, "Unable to find an appropriate codec for " + mimeType);
-            return null;
+           log(TAG, "Unable to find an appropriate codec for " + mimeType);
+            return;
         }
-        Log.d(TAG, "found codec: " + codecInfo.getName());
+        log(TAG, "found codec: " + codecInfo.getName());
 
         try {
             mediaCodec = MediaCodec.createByCodecName(codecInfo.getName());
         } catch (IOException e) {
-            Log.e(TAG, "Unable to create MediaCodec " + e.getMessage());
+            log(TAG, "Unable to create MediaCodec " + e.getMessage());
             mCallback.onEncodingFail(e);
-            return null;
+            return;
         }
 
         MediaFormat mediaFormat = MediaFormat.createVideoFormat(mimeType, mWidth, mHeight);
@@ -140,21 +142,21 @@ public class MediaCodecCreateVideo {
         try {
             mediaMuxer = new MediaMuxer(mOutputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
-            Log.e(TAG, "MediaMuxer creation failed. " + e.getMessage());
+            log(TAG, "MediaMuxer creation failed. " + e.getMessage());
             mCallback.onEncodingFail(e);
-            return null;
+            return;
         }
 
-        Log.d(TAG, "Initialization complete. Starting encoder...");
+        log(TAG, "Initialization complete. Starting encoder...");
         encode(cancelable);
     }
 
     public void stopEncoding() {
         if (mediaCodec == null || mediaMuxer == null) {
-            Log.d(TAG, "Failed to stop encoding since it never started");
+            log(TAG, "Failed to stop encoding since it never started");
             return;
         }
-        Log.d(TAG, "Stopping encoding");
+        log(TAG, "Stopping encoding");
 
         mNoMoreFrames = true;
 
@@ -167,10 +169,10 @@ public class MediaCodecCreateVideo {
 
     public void abortEncoding() {
         if (mediaCodec == null || mediaMuxer == null) {
-            Log.d(TAG, "Failed to abort encoding since it never started");
+            log(TAG, "Failed to abort encoding since it never started");
             return;
         }
-        Log.d(TAG, "Aborting encoding");
+        log(TAG, "Aborting encoding");
 
         mNoMoreFrames = true;
         mAbort = true;
@@ -185,12 +187,12 @@ public class MediaCodecCreateVideo {
 
     public void queueFrame(Bitmap bitmap) {
         if (mediaCodec == null || mediaMuxer == null) {
-            Log.d(TAG, "Failed to queue frame. Encoding not started");
+            log(TAG, "Failed to queue frame. Encoding not started");
             return;
         }
 
 
-        Log.d(TAG, "Queueing frame");
+        log(TAG, "Queueing frame");
         mEncodeQueue.add(bitmap);
 
         synchronized (mFrameSync) {
@@ -202,7 +204,7 @@ public class MediaCodecCreateVideo {
 
     private void encode(final MediaCodecExtractImages.Cancelable cancelable) {
 
-        Log.d(TAG, "Encoder started");
+        log(TAG, "Encoder started");
 
         while (true) {
 
@@ -244,7 +246,7 @@ public class MediaCodecCreateVideo {
             int encoderStatus = mediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
             if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 // no output available yet
-                Log.e(TAG, "No output from encoder available");
+                log(TAG, "No output from encoder available");
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 // not expected for an encoder
                 MediaFormat newFormat = mediaCodec.getOutputFormat();
@@ -252,11 +254,11 @@ public class MediaCodecCreateVideo {
                 mTrackIndex = mediaMuxer.addTrack(newFormat);
                 mediaMuxer.start();
             } else if (encoderStatus < 0) {
-                Log.e(TAG, "unexpected result from encoder.dequeueOutputBuffer: " + encoderStatus);
+                log(TAG, "unexpected result from encoder.dequeueOutputBuffer: " + encoderStatus);
             } else if (mBufferInfo.size != 0) {
                 ByteBuffer encodedData = mediaCodec.getOutputBuffer(encoderStatus);
                 if (encodedData == null) {
-                    Log.e(TAG, "encoderOutputBuffer " + encoderStatus + " was null");
+                    log(TAG, "encoderOutputBuffer " + encoderStatus + " was null");
                 } else {
                     encodedData.position(mBufferInfo.offset);
                     encodedData.limit(mBufferInfo.offset + mBufferInfo.size);
@@ -280,13 +282,13 @@ public class MediaCodecCreateVideo {
             mediaCodec.stop();
             mediaCodec.release();
             mediaCodec = null;
-            Log.d(TAG, "RELEASE CODEC");
+            log(TAG, "RELEASE CODEC");
         }
         if (mediaMuxer != null) {
             mediaMuxer.stop();
             mediaMuxer.release();
             mediaMuxer = null;
-            Log.d(TAG, "RELEASE MUXER");
+            log(TAG, "RELEASE MUXER");
         }
     }
 
@@ -526,7 +528,7 @@ public class MediaCodecCreateVideo {
             }
             codecInfo = info;
         }
-        Log.d(TAG, "found" + codecInfo.getName() + "supporting " + mimeType);
+        log(TAG, "found" + codecInfo.getName() + "supporting " + mimeType);
         MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
         return capabilities.colorFormats;
     }

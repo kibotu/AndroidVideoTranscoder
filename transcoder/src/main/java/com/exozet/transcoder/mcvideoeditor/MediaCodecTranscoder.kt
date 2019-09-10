@@ -12,7 +12,6 @@ import java.io.File
 
 object MediaCodecTranscoder {
 
-
     fun extractFramesFromVideo(
         context: Context,
         frameTimes: List<Double>,
@@ -58,7 +57,7 @@ object MediaCodecTranscoder {
             val mediaCodecCreateVideo = MediaCodecCreateVideo(config, object :
                 MediaCodecCreateVideo.IBitmapToVideoEncoderCallback {
                 override fun onEncodingComplete(outputFile: File?) {
-                    Log.i("MediaCodecTranscoder", "successfully created ${outputFile?.absolutePath}")
+                    log("MediaCodecTranscoder successfully created ${outputFile?.absolutePath}")
                     emitter.onNext(Progress(100, null, Uri.parse(outputFile?.absolutePath), System.currentTimeMillis() - startTime))
 
                     if (deleteFramesOnComplete) {
@@ -69,7 +68,7 @@ object MediaCodecTranscoder {
                 }
 
                 override fun onEncodingFail(e: Exception?) {
-                    Log.i("MediaCodecTranscoder", "something went wrong $e")
+                    log("MediaCodecTranscoder something went wrong $e")
                     emitter.onError(Throwable(e))
                 }
             })
