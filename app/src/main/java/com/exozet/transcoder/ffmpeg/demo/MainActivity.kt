@@ -1,4 +1,4 @@
-package com.exozet.videoeditor.demo
+package com.exozet.transcoder.ffmpeg.demo
 
 import android.Manifest
 import android.net.Uri
@@ -9,11 +9,11 @@ import com.exozet.android.core.extensions.isNotNullOrEmpty
 import com.exozet.android.core.extensions.onClick
 import com.exozet.android.core.extensions.parseExternalStorageFile
 import com.exozet.android.core.extensions.show
-import com.exozet.mcvideoeditor.MediaCodecTranscoder
-import com.exozet.mcvideoeditor.MediaConfig
-import com.exozet.videoeditor.EncodingConfig
-import com.exozet.videoeditor.FFMpegTranscoder
-import com.exozet.videoeditor.Progress
+import com.exozet.transcoder.mcvideoeditor.MediaCodecTranscoder
+import com.exozet.transcoder.mcvideoeditor.MediaConfig
+import com.exozet.transcoder.ffmpeg.EncodingConfig
+import com.exozet.transcoder.ffmpeg.FFMpegTranscoder
+import com.exozet.transcoder.ffmpeg.Progress
 import com.tbruyelle.rxpermissions2.RxPermissions
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable

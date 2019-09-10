@@ -1,4 +1,4 @@
-package com.exozet.mcvideoeditor;
+package com.exozet.transcoder.mcvideoeditor;
 /*
  * Copyright 2013 The Android Open Source Project
  *
@@ -15,42 +15,43 @@ package com.exozet.mcvideoeditor;
  * limitations under the License.
  */
 
-        import android.graphics.Bitmap;
-        import android.graphics.SurfaceTexture;
-        import android.media.MediaCodec;
-        import android.media.MediaExtractor;
-        import android.media.MediaFormat;
-        import android.net.Uri;
-        import android.opengl.EGL14;
-        import android.opengl.EGLConfig;
-        import android.opengl.EGLContext;
-        import android.opengl.EGLDisplay;
-        import android.opengl.EGLSurface;
-        import android.opengl.GLES11Ext;
-        import android.opengl.GLES20;
-        import android.opengl.Matrix;
-        import android.os.Build;
-        import android.os.Handler;
-        import android.os.HandlerThread;
-        import android.util.Log;
-        import android.view.Surface;
-        import com.exozet.videoeditor.Progress;
-        import io.reactivex.Observable;
-        import io.reactivex.ObservableEmitter;
-        import io.reactivex.ObservableOnSubscribe;
-        import io.reactivex.Observer;
+import android.graphics.Bitmap;
+import android.graphics.SurfaceTexture;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.net.Uri;
+import android.opengl.EGL14;
+import android.opengl.EGLConfig;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLSurface;
+import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
+import android.opengl.Matrix;
+import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.util.Log;
+import android.view.Surface;
 
-        import java.io.BufferedOutputStream;
-        import java.io.File;
-        import java.io.FileNotFoundException;
-        import java.io.FileOutputStream;
-        import java.io.IOException;
-        import java.nio.ByteBuffer;
-        import java.nio.ByteOrder;
-        import java.nio.FloatBuffer;
-        import java.util.ArrayList;
-        import java.util.List;
-        import java.util.concurrent.atomic.AtomicBoolean;
+import com.exozet.transcoder.ffmpeg.Progress;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.functions.Action;
 
 //20131122: minor tweaks to saveFrame() I/O
 //20131205: add alpha to EGLConfig (huge glReadPixels speedup); pre-allocate pixel buffers;
@@ -84,7 +85,7 @@ public class MediaCodecExtractImages {
      * it by adjusting the GL viewport to get letterboxing or pillarboxing, but generally if
      * you're extracting frames you don't want black bars.
      */
-    public Observable<Progress> extractMpegFrames(final Uri inputVideo, final List<Double> timeInSec, final Uri outputDir, int photoQuality){
+    public Observable<Progress> extractMpegFrames(final Uri inputVideo, final List<Double> timeInSec, final Uri outputDir, int photoQuality) {
 
         long startTime = System.currentTimeMillis();
 //
@@ -96,7 +97,9 @@ public class MediaCodecExtractImages {
 //
 //        })
 
-        return new Observable<Progress>(){
+        final Cancelable cancelable = new Cancelable();
+
+        return new Observable<Progress>() {
 
             @Override
             protected void subscribeActual(Observer<? super Progress> observer) {
@@ -139,16 +142,16 @@ public class MediaCodecExtractImages {
                     long duration = format.getLong(MediaFormat.KEY_DURATION);
 
                     int secToMicroSec = 1000000;
-                    int totalFrame = (int) ((duration*frameRate)/secToMicroSec);
+                    int totalFrame = (int) ((duration * frameRate) / secToMicroSec);
 
                     if (VERBOSE) {
                         Log.d(TAG, "Frame rate is = " + frameRate +
-                                " Total duration is in microSec = " + duration+
+                                " Total duration is in microSec = " + duration +
                                 " Total frame count = " + totalFrame);
                     }
 
                     //Can't use timeStamp directly, instead we need to get which frame we need to get
-                    List<Integer> desiredFrames = getDesiredFrames(timeInSec,frameRate);
+                    List<Integer> desiredFrames = getDesiredFrames(timeInSec, frameRate);
 
                     if (VERBOSE) {
                         Log.d(TAG, "Desired frames list is " + desiredFrames.toString());
@@ -164,12 +167,12 @@ public class MediaCodecExtractImages {
                     decoder.configure(format, outputSurface.getSurface(), null, 0);
                     decoder.start();
 
-                    doExtract(extractor, trackIndex, decoder, outputSurface,desiredFrames,outputPath,photoQuality,observer,totalFrame, startTime);
+                    doExtract(extractor, trackIndex, decoder, outputSurface, desiredFrames, outputPath, photoQuality, observer, totalFrame, startTime, cancelable);
 
-                } catch (Exception e){
-                    Log.e(TAG, "Something goes wrong while extracting images "+ e);
+                } catch (Exception e) {
+                    Log.e(TAG, "Something goes wrong while extracting images " + e);
                     observer.onError(e);
-                }finally {
+                } finally {
                     // release everything we grabbed
                     if (outputSurface != null) {
                         outputSurface.release();
@@ -188,17 +191,17 @@ public class MediaCodecExtractImages {
 
             }
 
-        };
+        }.doOnDispose(() -> cancelable.cancel.set(true));
     }
 
     /**
      * @param timeInSec = desired video frame times in sec
      * @param frameRate = video frame rate
      * @return list of frame numbers which points exact frame in given time
-     *
-     *While using mediaCodec we can't seek to desired time, instead of that need to figure out which frame we needed
+     * <p>
+     * While using mediaCodec we can't seek to desired time, instead of that need to figure out which frame we needed
      * to calculate that, need to multiply desired frame time with frame rate
-     *
+     * <p>
      * Example = Want to get the frame at 6.34 sec. We have a 30 frame rate video
      * 6.34*30 = 190,2 th frame -> we need int or long number so need to round it down
      */
@@ -206,7 +209,7 @@ public class MediaCodecExtractImages {
 
         ArrayList<Integer> desiredFrames = new ArrayList<>();
 
-        for (int i = 0; i<timeInSec.size();i++){
+        for (int i = 0; i < timeInSec.size(); i++) {
             int desiredTimeFrames = (int) (timeInSec.get(i) * frameRate);
             desiredFrames.add(desiredTimeFrames);
         }
@@ -235,7 +238,7 @@ public class MediaCodecExtractImages {
         return -1;
     }
 
-    static class Cancelable{
+    static class Cancelable {
         final AtomicBoolean cancel = new AtomicBoolean(false);
     }
 
@@ -256,7 +259,7 @@ public class MediaCodecExtractImages {
         boolean inputDone = false;
         while (!outputDone) {
 
-            if(cancel.cancel.get())
+            if (cancel.cancel.get())
                 return;
 
             if (VERBOSE) Log.d(TAG, "loop");
@@ -283,18 +286,18 @@ public class MediaCodecExtractImages {
                                     extractor.getSampleTrackIndex() + ", expected " + trackIndex);
                         }
 
-                        if (VERBOSE) Log.d(TAG,"decode count = " + decodeCount);
+                        if (VERBOSE) Log.d(TAG, "decode count = " + decodeCount);
 
-                                long presentationTimeUs = extractor.getSampleTime();
-                                decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
-                                        presentationTimeUs, 0 /*flags*/);
-                                if (VERBOSE) {
-                                    Log.d(TAG, "submitted frame " + inputChunk + " to dec, size=" +
-                                            chunkSize);
-                                }
-                                inputChunk++;
-                                extractor.advance();
-                            }
+                        long presentationTimeUs = extractor.getSampleTime();
+                        decoder.queueInputBuffer(inputBufIndex, 0, chunkSize,
+                                presentationTimeUs, 0 /*flags*/);
+                        if (VERBOSE) {
+                            Log.d(TAG, "submitted frame " + inputChunk + " to dec, size=" +
+                                    chunkSize);
+                        }
+                        inputChunk++;
+                        extractor.advance();
+                    }
 
                 } else {
                     if (VERBOSE) Log.d(TAG, "input buffer not available");
@@ -331,7 +334,7 @@ public class MediaCodecExtractImages {
                     decoder.releaseOutputBuffer(decoderStatus, doRender);
                     if (doRender) {
                         if (VERBOSE) Log.d(TAG, "awaiting decode of frame " + decodeCount);
-                        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),null,null, System.currentTimeMillis() - startTime));
+                        observer.onNext(new Progress((int) (((float) decodeCount / (float) totalFrame) * 100), null, null, System.currentTimeMillis() - startTime));
 
                         if (desiredFrames.contains(decodeCount)) {
                             outputSurface.awaitNewImage();
@@ -339,14 +342,14 @@ public class MediaCodecExtractImages {
                             File outputFile = new File(outputPath,
                                     String.format("frame-%03d.jpg", frameCounter));
                             long startWhen = System.nanoTime();
-                            outputSurface.saveFrame(outputFile.toString(),photoQuality);
+                            outputSurface.saveFrame(outputFile.toString(), photoQuality);
                             frameSaveTime += System.nanoTime() - startWhen;
                             frameCounter++;
 
                             if (VERBOSE) Log.d(TAG, "saving frames " + decodeCount);
 
                         }
-                        if (decodeCount < totalFrame){
+                        if (decodeCount < totalFrame) {
                             decodeCount++;
                         }
                     }
@@ -358,7 +361,7 @@ public class MediaCodecExtractImages {
         Log.d(TAG, "Saving " + numSaved + " frames took " +
                 (frameSaveTime / numSaved / 1000) + " us per frame");
 
-        observer.onNext(new Progress((int)(((float)decodeCount/(float) totalFrame)*100),"total saved frame = " + numSaved,null,System.currentTimeMillis() - startTime));
+        observer.onNext(new Progress((int) (((float) decodeCount / (float) totalFrame) * 100), "total saved frame = " + numSaved, null, System.currentTimeMillis() - startTime));
 
         observer.onComplete();
     }
@@ -603,7 +606,7 @@ public class MediaCodecExtractImages {
         /**
          * Saves the current frame to disk as a JPEG image.
          */
-        public void saveFrame(String filename,int photoQuality) throws IOException {
+        public void saveFrame(String filename, int photoQuality) throws IOException {
             // glReadPixels gives us a ByteBuffer filled with what is essentially big-endian RGBA
             // data (i.e. a byte of red, followed by a byte of green...).  To use the Bitmap
             // constructor that takes an int[] array with pixel data, we need an int[] filled
@@ -680,8 +683,8 @@ public class MediaCodecExtractImages {
                 // X, Y, Z, U, V
                 -1.0f, -1.0f, 0, 0.f, 0.f,
                 1.0f, -1.0f, 0, 1.f, 0.f,
-                -1.0f,  1.0f, 0, 0.f, 1.f,
-                1.0f,  1.0f, 0, 1.f, 1.f,
+                -1.0f, 1.0f, 0, 0.f, 1.f,
+                1.0f, 1.0f, 0, 1.f, 1.f,
         };
 
         private FloatBuffer mTriangleVertices;

@@ -1,4 +1,4 @@
-package com.exozet.mcvideoeditor;
+package com.exozet.transcoder.mcvideoeditor;
 
 import android.graphics.Bitmap;
 import android.media.MediaCodec;
@@ -10,6 +10,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,10 +19,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
-import androidx.annotation.RequiresApi;
 import io.reactivex.Completable;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.schedulers.Schedulers;
+import io.reactivex.disposables.Disposable;
 
 public class MediaCodecCreateVideo {
     private static final String TAG = MediaCodecCreateVideo.class.getSimpleName();
@@ -34,13 +34,13 @@ public class MediaCodecCreateVideo {
     private Object mFrameSync = new Object();
     private CountDownLatch mNewFrameLatch;
 
-    private String mimeType ; // H.264 Advanced Video Coding
+    private String mimeType; // H.264 Advanced Video Coding
     private static int mWidth;
     private static int mHeight;
     private int bitRate;
-    private  int frameRate; // Frames per second
+    private int frameRate; // Frames per second
 
-    private  int iFrameInterval;
+    private int iFrameInterval;
 
     private int mGenerateIndex = 0;
     private int mTrackIndex;
@@ -51,6 +51,7 @@ public class MediaCodecCreateVideo {
 
     public interface IBitmapToVideoEncoderCallback {
         void onEncodingComplete(File outputFile);
+
         void onEncodingFail(Exception e);
     }
 
@@ -59,15 +60,15 @@ public class MediaCodecCreateVideo {
 
         this.mimeType = mediaConfig.getMimeType();
 
-        if (mediaConfig.getBitRate() != null){
+        if (mediaConfig.getBitRate() != null) {
             this.bitRate = mediaConfig.getBitRate();
         }
 
-        if (mediaConfig.getFrameRate() != null){
+        if (mediaConfig.getFrameRate() != null) {
             this.frameRate = mediaConfig.getFrameRate();
         }
 
-        if (mediaConfig.getIFrameInterval() != null){
+        if (mediaConfig.getIFrameInterval() != null) {
             this.iFrameInterval = mediaConfig.getIFrameInterval();
         }
 
@@ -108,7 +109,7 @@ public class MediaCodecCreateVideo {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public void startEncoding(int width, int height, Uri outputUri) {
+    public void startEncoding(int width, int height, Uri outputUri, MediaCodecExtractImages.Cancelable cancelable) {
         mWidth = width;
         mHeight = height;
 
@@ -117,7 +118,7 @@ public class MediaCodecCreateVideo {
         MediaCodecInfo codecInfo = selectCodec(mimeType);
         if (codecInfo == null) {
             Log.e(TAG, "Unable to find an appropriate codec for " + mimeType);
-            return;
+            return null;
         }
         Log.d(TAG, "found codec: " + codecInfo.getName());
 
@@ -126,7 +127,7 @@ public class MediaCodecCreateVideo {
         } catch (IOException e) {
             Log.e(TAG, "Unable to create MediaCodec " + e.getMessage());
             mCallback.onEncodingFail(e);
-            return;
+            return null;
         }
 
         MediaFormat mediaFormat = MediaFormat.createVideoFormat(mimeType, mWidth, mHeight);
@@ -139,17 +140,13 @@ public class MediaCodecCreateVideo {
         try {
             mediaMuxer = new MediaMuxer(mOutputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
-            Log.e(TAG,"MediaMuxer creation failed. " + e.getMessage());
+            Log.e(TAG, "MediaMuxer creation failed. " + e.getMessage());
             mCallback.onEncodingFail(e);
-            return;
+            return null;
         }
 
         Log.d(TAG, "Initialization complete. Starting encoder...");
-
-        Completable.fromAction(() -> encode())
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe();
+        encode(cancelable);
     }
 
     public void stopEncoding() {
@@ -193,7 +190,6 @@ public class MediaCodecCreateVideo {
         }
 
 
-
         Log.d(TAG, "Queueing frame");
         mEncodeQueue.add(bitmap);
 
@@ -204,15 +200,19 @@ public class MediaCodecCreateVideo {
         }
     }
 
-    private void encode() {
+    private void encode(final MediaCodecExtractImages.Cancelable cancelable) {
 
         Log.d(TAG, "Encoder started");
 
-        while(true) {
-            if (mNoMoreFrames && (mEncodeQueue.size() ==  0)) break;
+        while (true) {
+
+            if(cancelable.cancel.get())
+                return;
+
+            if (mNoMoreFrames && (mEncodeQueue.size() == 0)) break;
 
             Bitmap bitmap = mEncodeQueue.poll();
-            if (bitmap ==  null) {
+            if (bitmap == null) {
                 synchronized (mFrameSync) {
                     mNewFrameLatch = new CountDownLatch(1);
                 }
@@ -248,7 +248,7 @@ public class MediaCodecCreateVideo {
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 // not expected for an encoder
                 MediaFormat newFormat = mediaCodec.getOutputFormat();
-                newFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 3000*3000);
+                newFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 3000 * 3000);
                 mTrackIndex = mediaMuxer.addTrack(newFormat);
                 mediaMuxer.start();
             } else if (encoderStatus < 0) {
@@ -280,13 +280,13 @@ public class MediaCodecCreateVideo {
             mediaCodec.stop();
             mediaCodec.release();
             mediaCodec = null;
-            Log.d(TAG,"RELEASE CODEC");
+            Log.d(TAG, "RELEASE CODEC");
         }
         if (mediaMuxer != null) {
-             mediaMuxer.stop();
+            mediaMuxer.stop();
             mediaMuxer.release();
             mediaMuxer = null;
-            Log.d(TAG,"RELEASE MUXER");
+            Log.d(TAG, "RELEASE MUXER");
         }
     }
 

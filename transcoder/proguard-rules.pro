@@ -21,4 +21,4 @@
 #-renamesourcefileattribute SourceFile
 
 
--keep class com.exozet.videoeditor.** { *; }
+-keep class com.exozet.transcoder.** { *; }

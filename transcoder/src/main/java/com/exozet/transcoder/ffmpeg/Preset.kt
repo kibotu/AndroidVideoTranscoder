@@ -1,4 +1,4 @@
-package com.exozet.videoeditor
+package com.exozet.transcoder.ffmpeg
 
 enum class Preset {
     ultrafast,

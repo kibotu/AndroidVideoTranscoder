@@ -122,7 +122,7 @@ dependencies {
     implementation libs.rxpermissions
 
 //    implementation libs.ffmpegTranscoder
-     implementation project(':videoeditor')
+     implementation project(':transcoder')
 
     implementation libs.parceler
     kapt libs.parcelerProcessor

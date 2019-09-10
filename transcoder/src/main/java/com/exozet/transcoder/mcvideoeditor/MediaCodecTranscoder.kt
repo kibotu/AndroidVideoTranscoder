@@ -1,12 +1,12 @@
-package com.exozet.mcvideoeditor
+package com.exozet.transcoder.mcvideoeditor
 
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.IntRange
-import com.exozet.videoeditor.Progress
-import com.exozet.videoeditor.log
+import com.exozet.transcoder.ffmpeg.Progress
+import com.exozet.transcoder.ffmpeg.log
 import io.reactivex.Observable
 import java.io.File
 
@@ -43,7 +43,6 @@ object MediaCodecTranscoder {
         deleteFramesOnComplete: Boolean = true
     ): Observable<Progress> {
 
-
         val shouldCancel =  MediaCodecExtractImages.Cancelable()
 
         return Observable.create<Progress> { emitter ->
@@ -77,7 +76,7 @@ object MediaCodecTranscoder {
 
             val firstFrame = BitmapFactory.decodeFile(items.firstOrNull()?.absolutePath ?: return@create)
 
-            mediaCodecCreateVideo.startEncoding(firstFrame.width, firstFrame.height, outputUri)
+            mediaCodecCreateVideo.startEncoding(firstFrame.width, firstFrame.height, outputUri, shouldCancel)
 
             if (!firstFrame.isRecycled) firstFrame.recycle()
 

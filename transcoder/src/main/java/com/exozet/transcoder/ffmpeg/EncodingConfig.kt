@@ -1,4 +1,4 @@
-package com.exozet.videoeditor
+package com.exozet.transcoder.ffmpeg
 
 import androidx.annotation.IntRange
 

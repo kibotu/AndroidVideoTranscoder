@@ -1,4 +1,4 @@
-package com.exozet.mcvideoeditor
+package com.exozet.transcoder.mcvideoeditor
 
 data class MediaConfig(
 

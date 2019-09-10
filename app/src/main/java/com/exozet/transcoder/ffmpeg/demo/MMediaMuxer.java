@@ -1,4 +1,4 @@
-package com.exozet.videoeditor.demo;
+package com.exozet.transcoder.ffmpeg.demo;
 
 import android.app.Activity;
 import android.app.ProgressDialog;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.exozet.videoeditor.demo;
+package com.exozet.transcoder.ffmpeg.demo;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;

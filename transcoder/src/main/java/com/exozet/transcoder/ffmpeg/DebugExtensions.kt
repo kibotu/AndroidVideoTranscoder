@@ -4,9 +4,10 @@
 
 @file:JvmName("DebugExtensions")
 
-package com.exozet.videoeditor
+package com.exozet.transcoder.ffmpeg
 
 import android.util.Log
+import com.exozet.transcoder.BuildConfig
 
 internal val debug = BuildConfig.DEBUG
 
