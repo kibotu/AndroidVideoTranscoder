@@ -251,7 +251,6 @@ class MainActivity : AppCompatActivity() {
 
             })
             .addTo(subscription)
-
     }
     private fun mergeByMediaCodec(frameFolder: Uri, outputVideo: Uri) {
 

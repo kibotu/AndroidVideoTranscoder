@@ -47,6 +47,8 @@ public class MediaCodecCreateVideo {
     private boolean mNoMoreFrames = false;
     private boolean mAbort = false;
 
+    int colorFormat;
+
     public interface IBitmapToVideoEncoderCallback {
         void onEncodingComplete(File outputFile);
         void onEncodingFail(Exception e);
@@ -54,6 +56,8 @@ public class MediaCodecCreateVideo {
 
     public MediaCodecCreateVideo(MediaConfig mediaConfig, IBitmapToVideoEncoderCallback callback) {
         mCallback = callback;
+
+        this.mimeType = mediaConfig.getMimeType();
 
         if (mediaConfig.getBitRate() != null){
             this.bitRate = mediaConfig.getBitRate();
@@ -63,10 +67,34 @@ public class MediaCodecCreateVideo {
             this.frameRate = mediaConfig.getFrameRate();
         }
 
-        this.mimeType = mediaConfig.getMimeType();
-
         if (mediaConfig.getIFrameInterval() != null){
             this.iFrameInterval = mediaConfig.getIFrameInterval();
+        }
+
+        int[] formats = this.getMediaCodecList();
+
+        if (colorFormat <= 0) {
+            colorFormat = MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar;
+        }
+
+        //need to select correct color format yuv420. In here we are deciding which one should we use
+        //https://www.jianshu.com/p/54a702be01e1 check this link for more (Chinese)
+        lab:
+        for (int format : formats) {
+            switch (format) {
+                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar: // yuv420sp
+                    colorFormat = format;
+                    break lab;
+                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar: // yuv420p
+                    colorFormat = format;
+                    break lab;
+                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar: // yuv420psp
+                    colorFormat = format;
+                    break lab;
+                case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar: // yuv420pp
+                    colorFormat = format;
+                    break lab;
+            }
         }
 
     }
@@ -92,12 +120,6 @@ public class MediaCodecCreateVideo {
             return;
         }
         Log.d(TAG, "found codec: " + codecInfo.getName());
-        int colorFormat;
-        try {
-            colorFormat = selectColorFormat(codecInfo, mimeType);
-        } catch (Exception e) {
-            colorFormat = MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar;
-        }
 
         try {
             mediaCodec = MediaCodec.createByCodecName(codecInfo.getName());
@@ -206,7 +228,7 @@ public class MediaCodecCreateVideo {
 
             if (bitmap == null) continue;
 
-            byte[] byteConvertFrame = getNV21(bitmap.getWidth(), bitmap.getHeight(), bitmap);
+            byte[] byteConvertFrame = getNV12(bitmap.getWidth(), bitmap.getHeight(), bitmap);
 
             long TIMEOUT_USEC = 500000;
             int inputBufIndex = mediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
@@ -312,18 +334,65 @@ public class MediaCodecCreateVideo {
         }
     }
 
-    private byte[] getNV21(int inputWidth, int inputHeight, Bitmap scaled) {
+    private byte[] getNV12(int inputWidth, int inputHeight, Bitmap scaled) {
 
         int[] argb = new int[inputWidth * inputHeight];
 
+        //Log.i(TAG, "scaled : " + scaled);
         scaled.getPixels(argb, 0, inputWidth, 0, 0, inputWidth, inputHeight);
 
         byte[] yuv = new byte[inputWidth * inputHeight * 3 / 2];
-        encodeYUV420SP(yuv, argb, inputWidth, inputHeight);
 
-        scaled.recycle();
+        switch (colorFormat) {
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar: // yuv420sp
+                encodeYUV420SP(yuv, argb, inputWidth, inputHeight);
+                break;
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar: // yuv420p
+                encodeYUV420P(yuv, argb, inputWidth, inputHeight);
+                break;
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar: // yuv420psp
+                encodeYUV420PSP(yuv, argb, inputWidth, inputHeight);
+                break;
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar: // yuv420pp
+                encodeYUV420PP(yuv, argb, inputWidth, inputHeight);
+                break;
+        }
+//        scaled.recycle();
 
         return yuv;
+    }
+
+    private void encodeYUV420P(byte[] yuv420sp, int[] argb, int width, int height) {
+        final int frameSize = width * height;
+
+        int yIndex = 0;
+        int uIndex = frameSize;
+        int vIndex = frameSize + width * height / 4;
+
+        int a, R, G, B, Y, U, V;
+        int index = 0;
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+
+                a = (argb[index] & 0xff000000) >> 24; // a is not used obviously
+                R = (argb[index] & 0xff0000) >> 16;
+                G = (argb[index] & 0xff00) >> 8;
+                B = (argb[index] & 0xff) >> 0;
+
+                // well known RGB to YUV algorithm
+                Y = ((66 * R + 129 * G + 25 * B + 128) >> 8) + 16;
+                V = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128; // Previously U
+                U = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128; // Previously V
+
+                yuv420sp[yIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                if (j % 2 == 0 && index % 2 == 0) {
+                    yuv420sp[vIndex++] = (byte) ((U < 0) ? 0 : ((U > 255) ? 255 : U));
+                    yuv420sp[uIndex++] = (byte) ((V < 0) ? 0 : ((V > 255) ? 255 : V));
+                }
+
+                index++;
+            }
+        }
     }
 
     private void encodeYUV420SP(byte[] yuv420sp, int[] argb, int width, int height) {
@@ -342,22 +411,124 @@ public class MediaCodecCreateVideo {
                 G = (argb[index] & 0xff00) >> 8;
                 B = (argb[index] & 0xff) >> 0;
 
-
+                // well known RGB to YUV algorithm
                 Y = ((66 * R + 129 * G + 25 * B + 128) >> 8) + 16;
-                U = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128;
-                V = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128;
-
+                V = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128; // Previously U
+                U = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128; // Previously V
 
                 yuv420sp[yIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
                 if (j % 2 == 0 && index % 2 == 0) {
-                    yuv420sp[uvIndex++] = (byte) ((U < 0) ? 0 : ((U > 255) ? 255 : U));
                     yuv420sp[uvIndex++] = (byte) ((V < 0) ? 0 : ((V > 255) ? 255 : V));
-
+                    yuv420sp[uvIndex++] = (byte) ((U < 0) ? 0 : ((U > 255) ? 255 : U));
                 }
 
                 index++;
             }
         }
+    }
+
+    private void encodeYUV420PSP(byte[] yuv420sp, int[] argb, int width, int height) {
+        final int frameSize = width * height;
+
+        int yIndex = 0;
+//        int uvIndex = frameSize;
+
+        int a, R, G, B, Y, U, V;
+        int index = 0;
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+
+                a = (argb[index] & 0xff000000) >> 24; // a is not used obviously
+                R = (argb[index] & 0xff0000) >> 16;
+                G = (argb[index] & 0xff00) >> 8;
+                B = (argb[index] & 0xff) >> 0;
+//                R = (argb[index] & 0xff000000) >>> 24;
+//                G = (argb[index] & 0xff0000) >> 16;
+//                B = (argb[index] & 0xff00) >> 8;
+
+                // well known RGB to YUV algorithm
+                Y = ((66 * R + 129 * G + 25 * B + 128) >> 8) + 16;
+                V = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128; // Previously U
+                U = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128; // Previously V
+
+                yuv420sp[yIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                if (j % 2 == 0 && index % 2 == 0) {
+                    yuv420sp[yIndex + 1] = (byte) ((V < 0) ? 0 : ((V > 255) ? 255 : V));
+                    yuv420sp[yIndex + 3] = (byte) ((U < 0) ? 0 : ((U > 255) ? 255 : U));
+                }
+                if (index % 2 == 0) {
+                    yIndex++;
+                }
+                index++;
+            }
+        }
+    }
+
+    private void encodeYUV420PP(byte[] yuv420sp, int[] argb, int width, int height) {
+
+        int yIndex = 0;
+        int vIndex = yuv420sp.length / 2;
+
+        int a, R, G, B, Y, U, V;
+        int index = 0;
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+
+                a = (argb[index] & 0xff000000) >> 24; // a is not used obviously
+                R = (argb[index] & 0xff0000) >> 16;
+                G = (argb[index] & 0xff00) >> 8;
+                B = (argb[index] & 0xff) >> 0;
+//                R = (argb[index] & 0xff000000) >>> 24;
+//                G = (argb[index] & 0xff0000) >> 16;
+//                B = (argb[index] & 0xff00) >> 8;
+
+                // well known RGB to YUV algorithm
+                Y = ((66 * R + 129 * G + 25 * B + 128) >> 8) + 16;
+                V = ((-38 * R - 74 * G + 112 * B + 128) >> 8) + 128; // Previously U
+                U = ((112 * R - 94 * G - 18 * B + 128) >> 8) + 128; // Previously V
+
+                if (j % 2 == 0 && index % 2 == 0) {// 0
+                    yuv420sp[yIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                    yuv420sp[yIndex + 1] = (byte) ((V < 0) ? 0 : ((V > 255) ? 255 : V));
+                    yuv420sp[vIndex + 1] = (byte) ((U < 0) ? 0 : ((U > 255) ? 255 : U));
+                    yIndex++;
+
+                } else if (j % 2 == 0 && index % 2 == 1) { //1
+                    yuv420sp[yIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                } else if (j % 2 == 1 && index % 2 == 0) { //2
+                    yuv420sp[vIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                    vIndex++;
+                } else if (j % 2 == 1 && index % 2 == 1) { //3
+                    yuv420sp[vIndex++] = (byte) ((Y < 0) ? 0 : ((Y > 255) ? 255 : Y));
+                }
+                index++;
+            }
+        }
+    }
+
+    public int[] getMediaCodecList() {
+        int numCodecs = MediaCodecList.getCodecCount();
+        MediaCodecInfo codecInfo = null;
+        for (int i = 0; i < numCodecs && codecInfo == null; i++) {
+            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
+            if (!info.isEncoder()) {
+                continue;
+            }
+            String[] types = info.getSupportedTypes();
+            boolean found = false;
+            for (int j = 0; j < types.length && !found; j++) {
+                if (types[j].equals(mimeType)) {
+                    found = true;
+                }
+            }
+            if (!found) {
+                continue;
+            }
+            codecInfo = info;
+        }
+        Log.d(TAG, "found" + codecInfo.getName() + "supporting " + mimeType);
+        MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
+        return capabilities.colorFormats;
     }
 
     private long computePresentationTime(long frameIndex, int framerate) {
