@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity() {
 
             //extractByFFMpeg(inputVideo,frameFolder)
 
-            extactByMediaCodec(times,inputVideo,frameFolder)
+            extactByMediaCodec(times, inputVideo, frameFolder)
 
         }
     }
@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
             //mergeByFFMpeg(frameFolder,outputVideo)
 
-            mergeByMediaCodec(frameFolder,outputVideo)
+            mergeByMediaCodec(frameFolder, outputVideo)
 
         }
     }
@@ -220,11 +220,7 @@ class MainActivity : AppCompatActivity() {
     //region MediaCodec
 
 
-    private fun extactByMediaCodec(
-        times: List<Double>,
-        inputVideo: Uri,
-        frameFolder: Uri
-    ) {
+    private fun extactByMediaCodec(times: List<Double>, inputVideo: Uri, frameFolder: Uri) {
         var progress: Progress? = null
 
         MediaCodecTranscoder.extractFramesFromVideo(
@@ -233,6 +229,7 @@ class MainActivity : AppCompatActivity() {
             inputVideo = inputVideo,
             id = "12345",
             outputDir = frameFolder
+
         )
             .subscribeOn(Schedulers.computation())
             .observeOn(AndroidSchedulers.mainThread())
@@ -252,6 +249,7 @@ class MainActivity : AppCompatActivity() {
             })
             .addTo(subscription)
     }
+
     private fun mergeByMediaCodec(frameFolder: Uri, outputVideo: Uri) {
 
         MediaCodecTranscoder.createVideoFromFrames(
@@ -259,9 +257,9 @@ class MainActivity : AppCompatActivity() {
             outputUri = outputVideo,
             config = MediaConfig(
                 //bitRate = 16000000,
-               // frameRate = 30,
+                // frameRate = 30,
                 //iFrameInterval = 1,
-               // mimeType = "video/avc"
+                // mimeType = "video/avc"
             ),
             deleteFramesOnComplete = false
         )
@@ -279,7 +277,7 @@ class MainActivity : AppCompatActivity() {
                 logv { "creating video fails ${it.message}" }
 
             }, {
-                logv { "createVideoFromFrames on complete "}
+                logv { "createVideoFromFrames on complete " }
             })
             .addTo(subscription)
 

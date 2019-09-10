@@ -5,11 +5,10 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.IntRange
-import com.exozet.videoeditor.EncodingConfig
 import com.exozet.videoeditor.Progress
+import com.exozet.videoeditor.log
 import io.reactivex.Observable
 import java.io.File
-import java.lang.Exception
 
 object MediaCodecTranscoder {
 
@@ -34,29 +33,36 @@ object MediaCodecTranscoder {
         if (!file.exists())
             file.mkdirs()
 
-        return mediaCodec.extractMpegFrames(inputVideo,frameTimes, outputDir, photoQuality)
-        }
+        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, outputDir, photoQuality)
+    }
 
     fun createVideoFromFrames(
         frameFolder: Uri,
         outputUri: Uri,
-        config: MediaConfig,
+        config: MediaConfig = MediaConfig(),
         deleteFramesOnComplete: Boolean = true
     ): Observable<Progress> {
 
-        return Observable.create{ emitter ->
 
-            var items = File(frameFolder.path!!).listFiles().sorted()
+        val shouldCancel =  MediaCodecExtractImages.Cancelable()
+
+        return Observable.create<Progress> { emitter ->
+
+            if (emitter.isDisposed)
+                return@create
+
+
+            val items = File(frameFolder.path!!).listFiles()?.sorted() ?: return@create
 
             val startTime = System.currentTimeMillis()
 
-            val mediaCodecCreateVideo = MediaCodecCreateVideo(config,object:
-                MediaCodecCreateVideo.IBitmapToVideoEncoderCallback{
+            val mediaCodecCreateVideo = MediaCodecCreateVideo(config, object :
+                MediaCodecCreateVideo.IBitmapToVideoEncoderCallback {
                 override fun onEncodingComplete(outputFile: File?) {
                     Log.i("MediaCodecTranscoder", "successfully created ${outputFile?.absolutePath}")
-                    emitter.onNext(Progress(100,null, Uri.parse(outputFile?.absolutePath),System.currentTimeMillis() - startTime))
+                    emitter.onNext(Progress(100, null, Uri.parse(outputFile?.absolutePath), System.currentTimeMillis() - startTime))
 
-                    if (deleteFramesOnComplete){
+                    if (deleteFramesOnComplete) {
                         val deleteStatus = deleteFolder(frameFolder.path!!)
                         Log.i("MediaCodecTranscoder", "Delete temp frame save path status: $deleteStatus")
                     }
@@ -64,12 +70,12 @@ object MediaCodecTranscoder {
                 }
 
                 override fun onEncodingFail(e: Exception?) {
-                    Log.i("MediaCodecTranscoder", "something goes wrong $e")
+                    Log.i("MediaCodecTranscoder", "something went wrong $e")
                     emitter.onError(Throwable(e))
                 }
             })
 
-            val firstFrame = BitmapFactory.decodeFile(items[0].absolutePath)
+            val firstFrame = BitmapFactory.decodeFile(items.firstOrNull()?.absolutePath ?: return@create)
 
             mediaCodecCreateVideo.startEncoding(firstFrame.width, firstFrame.height, outputUri)
 
@@ -77,22 +83,24 @@ object MediaCodecTranscoder {
 
             items.forEachIndexed { index, item ->
 
-                val progress = Progress((((index.toFloat())/(items.size-1.toFloat()))*100).toInt(),null, null,System.currentTimeMillis() - startTime)
+                val progress = Progress((((index.toFloat()) / (items.size - 1.toFloat())) * 100).toInt(), null, null, System.currentTimeMillis() - startTime)
                 val bMap = BitmapFactory.decodeFile(item.absolutePath)
 
-                Log.v("MediaCodecTranscoder", "on process ${progress}")
+                log("MediaCodecTranscoder  on process $progress")
 
                 emitter.onNext(progress)
                 mediaCodecCreateVideo.queueFrame(bMap)
 
             }
             mediaCodecCreateVideo.stopEncoding()
+        }.doOnDispose {
+            shouldCancel.cancel.set(true)
         }
+
     }
 
     /**
      * Deletes directory path recursively.
      */
     private fun deleteFolder(path: String): Boolean = File(path).deleteRecursively()
-
 }

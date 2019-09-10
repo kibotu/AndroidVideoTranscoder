@@ -36,6 +36,8 @@ package com.exozet.mcvideoeditor;
         import android.view.Surface;
         import com.exozet.videoeditor.Progress;
         import io.reactivex.Observable;
+        import io.reactivex.ObservableEmitter;
+        import io.reactivex.ObservableOnSubscribe;
         import io.reactivex.Observer;
 
         import java.io.BufferedOutputStream;
@@ -48,6 +50,7 @@ package com.exozet.mcvideoeditor;
         import java.nio.FloatBuffer;
         import java.util.ArrayList;
         import java.util.List;
+        import java.util.concurrent.atomic.AtomicBoolean;
 
 //20131122: minor tweaks to saveFrame() I/O
 //20131205: add alpha to EGLConfig (huge glReadPixels speedup); pre-allocate pixel buffers;
@@ -69,9 +72,9 @@ package com.exozet.mcvideoeditor;
  * currently part of CTS.)
  */
 public class MediaCodecExtractImages {
+
     private static final String TAG = "ExtractMpegFrames";
     private static final boolean VERBOSE = true;           // lots of logging
-
 
     /**
      * Tests extraction from an MP4 to a series of PNG files.
@@ -81,9 +84,17 @@ public class MediaCodecExtractImages {
      * it by adjusting the GL viewport to get letterboxing or pillarboxing, but generally if
      * you're extracting frames you don't want black bars.
      */
-    public Observable<Progress> extractMpegFrames(Uri inputVideo, List<Double> timeInSec, Uri outputDir, int photoQuality){
+    public Observable<Progress> extractMpegFrames(final Uri inputVideo, final List<Double> timeInSec, final Uri outputDir, int photoQuality){
 
         long startTime = System.currentTimeMillis();
+//
+//        Observable.create(emitter -> {
+//
+//            if(emitter.isDisposed())
+//                return;
+//
+//
+//        })
 
         return new Observable<Progress>(){
 
@@ -224,11 +235,15 @@ public class MediaCodecExtractImages {
         return -1;
     }
 
+    static class Cancelable{
+        final AtomicBoolean cancel = new AtomicBoolean(false);
+    }
+
     /**
      * Work loop.
      */
     static void doExtract(MediaExtractor extractor, int trackIndex, MediaCodec decoder,
-                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, Observer<? super Progress> observer, int totalFrame, long startTime) throws IOException {
+                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, Observer<? super Progress> observer, int totalFrame, long startTime, final Cancelable cancel) throws IOException {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
@@ -240,6 +255,10 @@ public class MediaCodecExtractImages {
         boolean outputDone = false;
         boolean inputDone = false;
         while (!outputDone) {
+
+            if(cancel.cancel.get())
+                return;
+
             if (VERBOSE) Log.d(TAG, "loop");
 
             // Feed more data to the decoder.

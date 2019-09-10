@@ -5,7 +5,7 @@ data class MediaConfig(
     /**
     A key describing the average bitrate in bits/sec. The associated value is an integer
      **/
-    val bitRate :Int? = 16000000,
+    val bitRate :Int? = 16_000_000,
 
     /**
      * A key describing the frame rate of a video format in frames/sec.
