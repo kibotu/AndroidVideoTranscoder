@@ -73,6 +73,8 @@ object MediaCodecTranscoder {
 
             mediaCodecCreateVideo.startEncoding(firstFrame.width, firstFrame.height, outputUri)
 
+            if (!firstFrame.isRecycled) firstFrame.recycle()
+
             items.forEachIndexed { index, item ->
 
                 val progress = Progress((((index.toFloat())/(items.size-1.toFloat()))*100).toInt(),null, null,System.currentTimeMillis() - startTime)
