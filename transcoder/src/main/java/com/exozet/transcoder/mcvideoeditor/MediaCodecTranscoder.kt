@@ -32,7 +32,7 @@ object MediaCodecTranscoder {
         if (!file.exists())
             file.mkdirs()
 
-        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, Uri.parse(localSavePath), photoQuality).doOnDispose { deleteFolder(localSavePath) }
+        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, Uri.parse(localSavePath), photoQuality)
     }
 
     fun createVideoFromFrames(
@@ -42,6 +42,7 @@ object MediaCodecTranscoder {
         deleteFramesOnComplete: Boolean = true
     ): Observable<Progress> {
 
+        var mediaCodecCreateVideo : MediaCodecCreateVideo? = null
         val shouldCancel =  MediaCodecExtractImages.Cancelable()
 
         return Observable.create<Progress> { emitter ->
@@ -53,7 +54,7 @@ object MediaCodecTranscoder {
 
             val startTime = System.currentTimeMillis()
 
-            val mediaCodecCreateVideo = MediaCodecCreateVideo(config, object :
+            mediaCodecCreateVideo = MediaCodecCreateVideo(config, object :
                 MediaCodecCreateVideo.IBitmapToVideoEncoderCallback {
                 override fun onEncodingComplete(outputFile: File?) {
                     log("MediaCodecTranscoder successfully created ${outputFile?.absolutePath}")
@@ -74,24 +75,24 @@ object MediaCodecTranscoder {
 
             val firstFrame = BitmapFactory.decodeFile(items.firstOrNull()?.absolutePath ?: return@create)
 
-            mediaCodecCreateVideo.startEncoding(firstFrame.width, firstFrame.height, outputUri, shouldCancel)
+            mediaCodecCreateVideo?.startEncoding(firstFrame.width, firstFrame.height,items, outputUri, shouldCancel)
 
             if (!firstFrame.isRecycled) firstFrame.recycle()
-
+/*
             items.forEachIndexed { index, item ->
 
                 val progress = Progress((((index.toFloat()) / (items.size - 1.toFloat())) * 100).toInt(), null, null, System.currentTimeMillis() - startTime)
-                val bMap = BitmapFactory.decodeFile(item.absolutePath)
 
                 log("MediaCodecTranscoder  on process $progress")
 
                 emitter.onNext(progress)
-                mediaCodecCreateVideo.queueFrame(bMap)
 
             }
-            mediaCodecCreateVideo.stopEncoding()
+            mediaCodecCreateVideo?.stopEncoding()*/
         }.doOnDispose {
             shouldCancel.cancel.set(true)
+          //  mediaCodecCreateVideo?.abortEncoding()
+           // mediaCodecCreateVideo?.stopEncoding()
         }
 
     }
@@ -99,5 +100,5 @@ object MediaCodecTranscoder {
     /**
      * Deletes directory path recursively.
      */
-    private fun deleteFolder(path: String): Boolean = File(path).deleteRecursively()
+    internal fun deleteFolder(path: String): Boolean = File(path).deleteRecursively()
 }

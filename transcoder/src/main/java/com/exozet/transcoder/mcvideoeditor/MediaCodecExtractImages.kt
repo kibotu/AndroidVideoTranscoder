@@ -275,9 +275,10 @@ class MediaCodecExtractImages {
             var inputDone = false
             while (!outputDone) {
 
-                if (cancel.cancel.get())
+                if (cancel.cancel.get()) {
+                    outputPath?.let { MediaCodecTranscoder.deleteFolder(it) }
                     return
-
+                }
                 log("loop")
 
                 // Feed more data to the decoder.
