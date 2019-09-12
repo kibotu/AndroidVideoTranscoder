@@ -208,7 +208,7 @@ public class MediaCodecCreateVideo {
 
         while (true) {
 
-            if(cancelable.cancel.get())
+            if(cancelable.getCancel().get())
                 return;
 
             if (mNoMoreFrames && (mEncodeQueue.size() == 0)) break;

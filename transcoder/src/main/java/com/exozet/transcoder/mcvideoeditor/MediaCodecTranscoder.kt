@@ -32,7 +32,7 @@ object MediaCodecTranscoder {
         if (!file.exists())
             file.mkdirs()
 
-        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, outputDir!!, photoQuality)
+        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, Uri.parse(localSavePath), photoQuality).doOnDispose { deleteFolder(localSavePath) }
     }
 
     fun createVideoFromFrames(
