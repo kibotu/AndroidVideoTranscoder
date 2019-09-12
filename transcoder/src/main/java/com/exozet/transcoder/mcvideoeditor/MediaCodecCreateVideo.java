@@ -1,6 +1,7 @@
 package com.exozet.transcoder.mcvideoeditor;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -12,14 +13,18 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.exozet.transcoder.ffmpeg.Progress;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
 import io.reactivex.Completable;
+import io.reactivex.ObservableEmitter;
 import io.reactivex.disposables.Disposable;
 
 import static com.exozet.transcoder.ffmpeg.DebugExtensions.log;
@@ -27,9 +32,7 @@ import static com.exozet.transcoder.ffmpeg.DebugExtensions.log;
 public class MediaCodecCreateVideo {
     private static final String TAG = MediaCodecCreateVideo.class.getSimpleName();
 
-    private IBitmapToVideoEncoderCallback mCallback;
     private File mOutputFile;
-    private Queue<Bitmap> mEncodeQueue = new ConcurrentLinkedQueue();
     private MediaCodec mediaCodec;
     private MediaMuxer mediaMuxer;
 
@@ -51,14 +54,7 @@ public class MediaCodecCreateVideo {
 
     int colorFormat;
 
-    public interface IBitmapToVideoEncoderCallback {
-        void onEncodingComplete(File outputFile);
-
-        void onEncodingFail(Exception e);
-    }
-
-    public MediaCodecCreateVideo(MediaConfig mediaConfig, IBitmapToVideoEncoderCallback callback) {
-        mCallback = callback;
+    public MediaCodecCreateVideo(MediaConfig mediaConfig) {
 
         this.mimeType = mediaConfig.getMimeType();
 
@@ -99,21 +95,14 @@ public class MediaCodecCreateVideo {
                     break lab;
             }
         }
-
-    }
-
-    public boolean isEncodingStarted() {
-        return (mediaCodec != null) && (mediaMuxer != null) && !mNoMoreFrames && !mAbort;
-    }
-
-    public int getActiveBitmaps() {
-        return mEncodeQueue.size();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    public void startEncoding(int width, int height, Uri outputUri, MediaCodecExtractImages.Cancelable cancelable) {
+    public void startEncoding(List<File> frames, int width, int height, Uri outputUri, MediaCodecExtractImages.Cancelable cancelable, ObservableEmitter<Progress> emitter) {
         mWidth = width;
         mHeight = height;
+
+        long startTime = System.currentTimeMillis();
 
         mOutputFile = new File(outputUri.getPath());
 
@@ -128,7 +117,7 @@ public class MediaCodecCreateVideo {
             mediaCodec = MediaCodec.createByCodecName(codecInfo.getName());
         } catch (IOException e) {
             log(TAG, "Unable to create MediaCodec " + e.getMessage());
-            mCallback.onEncodingFail(e);
+            emitter.onError(e);
             return;
         }
 
@@ -143,93 +132,33 @@ public class MediaCodecCreateVideo {
             mediaMuxer = new MediaMuxer(mOutputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             log(TAG, "MediaMuxer creation failed. " + e.getMessage());
-            mCallback.onEncodingFail(e);
+            emitter.onError(e);
             return;
         }
 
         log(TAG, "Initialization complete. Starting encoder...");
-        encode(cancelable);
-    }
 
-    public void stopEncoding() {
-        if (mediaCodec == null || mediaMuxer == null) {
-            log(TAG, "Failed to stop encoding since it never started");
-            return;
-        }
-        log(TAG, "Stopping encoding");
-
-        mNoMoreFrames = true;
-
-        synchronized (mFrameSync) {
-            if ((mNewFrameLatch != null) && (mNewFrameLatch.getCount() > 0)) {
-                mNewFrameLatch.countDown();
+        for (int i = 0 ; i<frames.size(); i++){
+            if (cancelable.getCancel().get()){
+                release();
+                return;
             }
+
+            Bitmap bMap = BitmapFactory.decodeFile(frames.get(i).getAbsolutePath());
+            encode(bMap);
+
+            Progress progress =new Progress((int)((((float)i) / ((float)frames.size() - 1f)) * 100), null, outputUri, System.currentTimeMillis() - startTime);
+
+            emitter.onNext(progress);
         }
+
+        emitter.onComplete();
+        release();
     }
 
-    public void abortEncoding() {
-        if (mediaCodec == null || mediaMuxer == null) {
-            log(TAG, "Failed to abort encoding since it never started");
-            return;
-        }
-        log(TAG, "Aborting encoding");
-
-        mNoMoreFrames = true;
-        mAbort = true;
-        mEncodeQueue = new ConcurrentLinkedQueue(); // Drop all frames
-
-        synchronized (mFrameSync) {
-            if ((mNewFrameLatch != null) && (mNewFrameLatch.getCount() > 0)) {
-                mNewFrameLatch.countDown();
-            }
-        }
-    }
-
-    public void queueFrame(Bitmap bitmap) {
-        if (mediaCodec == null || mediaMuxer == null) {
-            log(TAG, "Failed to queue frame. Encoding not started");
-            return;
-        }
-
-
-        log(TAG, "Queueing frame");
-        mEncodeQueue.add(bitmap);
-
-        synchronized (mFrameSync) {
-            if ((mNewFrameLatch != null) && (mNewFrameLatch.getCount() > 0)) {
-                mNewFrameLatch.countDown();
-            }
-        }
-    }
-
-    private void encode(final MediaCodecExtractImages.Cancelable cancelable) {
+    private void encode(Bitmap bitmap) {
 
         log(TAG, "Encoder started");
-
-        while (true) {
-
-            if(cancelable.getCancel().get())
-                return;
-
-            if (mNoMoreFrames && (mEncodeQueue.size() == 0)) break;
-
-            Bitmap bitmap = mEncodeQueue.poll();
-            if (bitmap == null) {
-                synchronized (mFrameSync) {
-                    mNewFrameLatch = new CountDownLatch(1);
-                }
-
-                try {
-                    mNewFrameLatch.await();
-                } catch (InterruptedException e) {
-                    mCallback.onEncodingFail(e);
-                }
-
-                bitmap = mEncodeQueue.poll();
-            }
-
-            if (bitmap == null) continue;
-
             byte[] byteConvertFrame = getNV12(bitmap.getWidth(), bitmap.getHeight(), bitmap);
 
             long TIMEOUT_USEC = 500000;
@@ -266,15 +195,6 @@ public class MediaCodecCreateVideo {
                     mediaCodec.releaseOutputBuffer(encoderStatus, false);
                 }
             }
-        }
-
-        release();
-
-        if (mAbort) {
-            mOutputFile.delete();
-        } else {
-            mCallback.onEncodingComplete(mOutputFile);
-        }
     }
 
     private void release() {
@@ -309,33 +229,6 @@ public class MediaCodecCreateVideo {
         return null;
     }
 
-    private static int selectColorFormat(MediaCodecInfo codecInfo,
-                                         String mimeType) {
-        MediaCodecInfo.CodecCapabilities capabilities = codecInfo
-                .getCapabilitiesForType(mimeType);
-        for (int i = 0; i < capabilities.colorFormats.length; i++) {
-            int colorFormat = capabilities.colorFormats[i];
-            if (isRecognizedFormat(colorFormat)) {
-                return colorFormat;
-            }
-        }
-        return 0; // not reached
-    }
-
-    private static boolean isRecognizedFormat(int colorFormat) {
-        switch (colorFormat) {
-            // these are the formats we know how to handle for
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
-            case MediaCodecInfo.CodecCapabilities.COLOR_TI_FormatYUV420PackedSemiPlanar:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     private byte[] getNV12(int inputWidth, int inputHeight, Bitmap scaled) {
 
         int[] argb = new int[inputWidth * inputHeight];
@@ -359,7 +252,6 @@ public class MediaCodecCreateVideo {
                 encodeYUV420PP(yuv, argb, inputWidth, inputHeight);
                 break;
         }
-//        scaled.recycle();
 
         return yuv;
     }

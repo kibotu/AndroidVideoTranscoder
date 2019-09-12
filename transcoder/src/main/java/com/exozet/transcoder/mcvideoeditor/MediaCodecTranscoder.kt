@@ -51,48 +51,18 @@ object MediaCodecTranscoder {
                 return@create
 
             val items = File(frameFolder.path!!).listFiles()?.sorted() ?: return@create
-
-            val startTime = System.currentTimeMillis()
-
-            mediaCodecCreateVideo = MediaCodecCreateVideo(config, object :
-                MediaCodecCreateVideo.IBitmapToVideoEncoderCallback {
-                override fun onEncodingComplete(outputFile: File?) {
-                    log("MediaCodecTranscoder successfully created ${outputFile?.absolutePath}")
-                    emitter.onNext(Progress(100, null, Uri.parse(outputFile?.absolutePath), System.currentTimeMillis() - startTime))
-
-                    if (deleteFramesOnComplete) {
-                        val deleteStatus = deleteFolder(frameFolder.path!!)
-                        Log.i("MediaCodecTranscoder", "Delete temp frame save path status: $deleteStatus")
-                    }
-                    emitter.onComplete()
-                }
-
-                override fun onEncodingFail(e: Exception?) {
-                    log("MediaCodecTranscoder something went wrong $e")
-                    emitter.onError(Throwable(e))
-                }
-            })
+            
+            mediaCodecCreateVideo = MediaCodecCreateVideo(config)
 
             val firstFrame = BitmapFactory.decodeFile(items.firstOrNull()?.absolutePath ?: return@create)
 
-            mediaCodecCreateVideo?.startEncoding(firstFrame.width, firstFrame.height,items, outputUri, shouldCancel)
+            mediaCodecCreateVideo!!.startEncoding(items,firstFrame.width, firstFrame.height, outputUri, shouldCancel, emitter)
 
             if (!firstFrame.isRecycled) firstFrame.recycle()
-/*
-            items.forEachIndexed { index, item ->
-
-                val progress = Progress((((index.toFloat()) / (items.size - 1.toFloat())) * 100).toInt(), null, null, System.currentTimeMillis() - startTime)
-
-                log("MediaCodecTranscoder  on process $progress")
-
-                emitter.onNext(progress)
-
-            }
-            mediaCodecCreateVideo?.stopEncoding()*/
+            
         }.doOnDispose {
             shouldCancel.cancel.set(true)
-          //  mediaCodecCreateVideo?.abortEncoding()
-           // mediaCodecCreateVideo?.stopEncoding()
+            mediaCodecCreateVideo = null
         }
 
     }

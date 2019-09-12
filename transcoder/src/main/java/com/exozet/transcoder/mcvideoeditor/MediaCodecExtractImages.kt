@@ -182,15 +182,8 @@ class MediaCodecExtractImages {
 
         }.doOnDispose {
             cancelable.cancel.set(true)
-                outputSurface?.release()
-                outputSurface = null
-
-                decoder?.stop()
-                decoder?.release()
-                decoder = null
-
-                extractor?.release()
-                extractor = null
+        }.doOnComplete {
+            release(outputSurface, decoder, extractor)
         }
     }
 
@@ -277,6 +270,7 @@ class MediaCodecExtractImages {
 
                 if (cancel.cancel.get()) {
                     outputPath?.let { MediaCodecTranscoder.deleteFolder(it) }
+                    release(outputSurface, decoder, extractor)
                     return
                 }
                 log("loop")
@@ -405,6 +399,17 @@ class MediaCodecExtractImages {
             )
 
             observer.onComplete()
+        }
+
+        private fun release(
+            outputSurface: CodecOutputSurface?,
+            decoder: MediaCodec?,
+            extractor: MediaExtractor?
+        ) {
+            outputSurface?.release()
+            decoder?.stop()
+            decoder?.release()
+            extractor?.release()
         }
     }
 }
