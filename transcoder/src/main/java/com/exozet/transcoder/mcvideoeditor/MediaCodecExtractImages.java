@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
 import io.reactivex.functions.Action;
 
@@ -89,104 +91,95 @@ public class MediaCodecExtractImages {
     public Observable<Progress> extractMpegFrames(final Uri inputVideo, final List<Double> timeInSec, final Uri outputDir, int photoQuality) {
 
         long startTime = System.currentTimeMillis();
-//
-//        Observable.create(emitter -> {
-//
-//            if(emitter.isDisposed())
-//                return;
-//
-//
-//        })
 
         final Cancelable cancelable = new Cancelable();
 
-        return new Observable<Progress>() {
+        return Observable.create((ObservableOnSubscribe<Progress>) emitter -> {
+            String inputFilePath = inputVideo.getPath();
+            String outputPath = outputDir.getPath();
 
-            @Override
-            protected void subscribeActual(Observer<? super Progress> observer) {
+            MediaCodec decoder = null;
+            CodecOutputSurface outputSurface = null;
+            MediaExtractor extractor = null;
+            int saveWidth;
+            int saveHeight;
 
-                String inputFilePath = inputVideo.getPath();
-                String outputPath = outputDir.getPath();
+            if (emitter.isDisposed())
+                return;
 
-                MediaCodec decoder = null;
-                CodecOutputSurface outputSurface = null;
-                MediaExtractor extractor = null;
-                int saveWidth;
-                int saveHeight;
-
-                try {
-                    File inputFile = new File(inputFilePath);   // must be an absolute path
-                    // The MediaExtractor error messages aren't very useful.  Check to see if the input
-                    // file exists so we can throw a better one if it's not there.
-                    if (!inputFile.canRead()) {
-                        observer.onError(new FileNotFoundException("Unable to read " + inputFile));
-                    }
-
-                    extractor = new MediaExtractor();
-                    extractor.setDataSource(inputFile.toString());
-                    int trackIndex = selectTrack(extractor);
-                    if (trackIndex < 0) {
-                        observer.onError(new RuntimeException("No video track found in " + inputFile));
-                    }
-                    extractor.selectTrack(trackIndex);
-
-                    MediaFormat format = extractor.getTrackFormat(trackIndex);
-
-                    saveWidth = format.getInteger(MediaFormat.KEY_WIDTH);
-                    saveHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
-                        log(TAG, "Video size is " + format.getInteger(MediaFormat.KEY_WIDTH) + "x" +
-                                format.getInteger(MediaFormat.KEY_HEIGHT));
-
-                    int frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
-                    long duration = format.getLong(MediaFormat.KEY_DURATION);
-
-                    int secToMicroSec = 1000000;
-                    int totalFrame = (int) ((duration * frameRate) / secToMicroSec);
-
-                        log(TAG, "Frame rate is = " + frameRate +
-                                " Total duration is in microSec = " + duration +
-                                " Total frame count = " + totalFrame);
-
-                    //Can't use timeStamp directly, instead we need to get which frame we need to get
-                    List<Integer> desiredFrames = getDesiredFrames(timeInSec, frameRate);
-
-                        log(TAG, "Desired frames list is " + desiredFrames.toString());
-                    // Could use width/height from the MediaFormat to get full-size frames.
-                    outputSurface = new CodecOutputSurface(saveWidth, saveHeight);
-
-                    // Create a MediaCodec decoder, and configure it with the MediaFormat from the
-                    // extractor.  It's very important to use the format from the extractor because
-                    // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
-                    String mime = format.getString(MediaFormat.KEY_MIME);
-                    decoder = MediaCodec.createDecoderByType(mime);
-                    decoder.configure(format, outputSurface.getSurface(), null, 0);
-                    decoder.start();
-
-                    doExtract(extractor, trackIndex, decoder, outputSurface, desiredFrames, outputPath, photoQuality, observer, totalFrame, startTime, cancelable);
-
-                } catch (Exception e) {
-                    log(TAG, "Something goes wrong while extracting images " + e);
-                    observer.onError(e);
-                } finally {
-                    // release everything we grabbed
-                    if (outputSurface != null) {
-                        outputSurface.release();
-                        outputSurface = null;
-                    }
-                    if (decoder != null) {
-                        decoder.stop();
-                        decoder.release();
-                        decoder = null;
-                    }
-                    if (extractor != null) {
-                        extractor.release();
-                        extractor = null;
-                    }
+            try {
+                File inputFile = new File(inputFilePath);   // must be an absolute path
+                // The MediaExtractor error messages aren't very useful.  Check to see if the input
+                // file exists so we can throw a better one if it's not there.
+                if (!inputFile.canRead()) {
+                    emitter.onError(new FileNotFoundException("Unable to read " + inputFile));
                 }
 
+                extractor = new MediaExtractor();
+                extractor.setDataSource(inputFile.toString());
+                int trackIndex = selectTrack(extractor);
+                if (trackIndex < 0) {
+                    emitter.onError(new RuntimeException("No video track found in " + inputFile));
+                }
+                extractor.selectTrack(trackIndex);
+
+                MediaFormat format = extractor.getTrackFormat(trackIndex);
+
+                saveWidth = format.getInteger(MediaFormat.KEY_WIDTH);
+                saveHeight = format.getInteger(MediaFormat.KEY_HEIGHT);
+                log(TAG, "Video size is " + format.getInteger(MediaFormat.KEY_WIDTH) + "x" +
+                        format.getInteger(MediaFormat.KEY_HEIGHT));
+
+                int frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+                long duration = format.getLong(MediaFormat.KEY_DURATION);
+
+                int secToMicroSec = 1000000;
+                int totalFrame = (int) ((duration * frameRate) / secToMicroSec);
+
+                log(TAG, "Frame rate is = " + frameRate +
+                        " Total duration is in microSec = " + duration +
+                        " Total frame count = " + totalFrame);
+
+                //Can't use timeStamp directly, instead we need to get which frame we need to get
+                List<Integer> desiredFrames = getDesiredFrames(timeInSec, frameRate);
+
+                log(TAG, "Desired frames list is " + desiredFrames.toString());
+                // Could use width/height from the MediaFormat to get full-size frames.
+                outputSurface = new CodecOutputSurface(saveWidth, saveHeight);
+
+                // Create a MediaCodec decoder, and configure it with the MediaFormat from the
+                // extractor.  It's very important to use the format from the extractor because
+                // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
+                String mime = format.getString(MediaFormat.KEY_MIME);
+                decoder = MediaCodec.createDecoderByType(mime);
+                decoder.configure(format, outputSurface.getSurface(), null, 0);
+                decoder.start();
+
+                doExtract(extractor, trackIndex, decoder, outputSurface, desiredFrames, outputPath, photoQuality, emitter, totalFrame, startTime, cancelable);
+
+            } catch (Exception e) {
+                log(TAG, "Something goes wrong while extracting images " + e);
+                emitter.onError(e);
+            } finally {
+                // release everything we grabbed
+                if (outputSurface != null) {
+                    outputSurface.release();
+                    outputSurface = null;
+                }
+                if (decoder != null) {
+                    decoder.stop();
+                    decoder.release();
+                    decoder = null;
+                }
+                if (extractor != null) {
+                    extractor.release();
+                    extractor = null;
+                }
             }
 
-        }.doOnDispose(() -> cancelable.cancel.set(true));
+        }).doOnDispose(() -> {
+            cancelable.cancel.set(true);
+        });
     }
 
     /**
@@ -239,7 +232,7 @@ public class MediaCodecExtractImages {
      * Work loop.
      */
     static void doExtract(MediaExtractor extractor, int trackIndex, MediaCodec decoder,
-                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, Observer<? super Progress> observer, int totalFrame, long startTime, final Cancelable cancel) throws IOException {
+                          CodecOutputSurface outputSurface, List<Integer> desiredFrames, String outputPath, int photoQuality, ObservableEmitter<Progress> observer, int totalFrame, long startTime, final Cancelable cancel) throws IOException {
         final int TIMEOUT_USEC = 10000;
         ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();

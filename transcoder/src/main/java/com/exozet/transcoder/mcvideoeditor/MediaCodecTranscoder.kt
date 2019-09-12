@@ -32,7 +32,7 @@ object MediaCodecTranscoder {
         if (!file.exists())
             file.mkdirs()
 
-        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, outputDir, photoQuality)
+        return mediaCodec.extractMpegFrames(inputVideo, frameTimes, outputDir!!, photoQuality)
     }
 
     fun createVideoFromFrames(
@@ -48,7 +48,6 @@ object MediaCodecTranscoder {
 
             if (emitter.isDisposed)
                 return@create
-
 
             val items = File(frameFolder.path!!).listFiles()?.sorted() ?: return@create
 

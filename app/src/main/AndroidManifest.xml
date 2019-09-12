@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
-
     <application
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
@@ -14,7 +13,7 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme"
             tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name="com.exozet.ffmpeg.demo.DemoActivity">
+        <activity android:name="com.exozet.transcoder.ffmpeg.demo.DemoActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
