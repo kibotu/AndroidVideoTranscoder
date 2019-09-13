@@ -85,4 +85,6 @@ configurations.all {
 }
 
 apply from: "${project.rootDir}/Android-Dependencies/javadoc.gradle"
-apply from: "${project.rootDir}/Android-Dependencies/bintray.gradle"
+
+if (project.rootProject.file('bintray.properties').exists())
+    apply from: "${project.rootDir}/Android-Dependencies/bintray.gradle"
