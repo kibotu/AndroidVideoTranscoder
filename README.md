@@ -1,8 +1,13 @@
-[![Build Status](https://app.bitrise.io/app/09accd151a795e36/status.svg?token=qOMQISBTgdxyqBD6NSOzTg)](https://app.bitrise.io/app/09accd151a795e36) [ ![Download](https://api.bintray.com/packages/exozetag/maven/Android-FFmpeg-Transcoder/images/download.svg) ](https://bintray.com/exozetag/maven/Android-FFmpeg-Transcoder/_latestVersion)
+AndroidVideoTranscoder [![Build Status](https://app.bitrise.io/app/09accd151a795e36/status.svg?token=qOMQISBTgdxyqBD6NSOzTg)](https://app.bitrise.io/app/09accd151a795e36) [ ![Download](https://api.bintray.com/packages/exozetag/maven/VideoTranscoder/images/download.svg) ](https://bintray.com/exozetag/maven/VideoTranscoder/_latestVersion)
 
+Video transcoding.
+
+Features
+
+- extracting images from video either ffmpeg or mediacodec
+- creating video from image seither ffmpeg or mediacodec
 
 # How to use
-
 
 ### Extracting frames
 
@@ -57,7 +62,7 @@ Add it in your root build.gradle at the end of repositories:
 Step 2. Add the dependency
 
 	dependencies {
-		implementation 'com.exozet:videoeditor:{version}'
+		implementation 'com.exozet:transcoder:{version}'
 	}
 
 ### License
