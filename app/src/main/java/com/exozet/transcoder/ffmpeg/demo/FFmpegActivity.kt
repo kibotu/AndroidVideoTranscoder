@@ -30,7 +30,7 @@ import java.io.InputStream
 import kotlin.math.roundToInt
 
 
-class MainActivity : AppCompatActivity() {
+class FFmpegActivity : AppCompatActivity() {
 
     var subscription: CompositeDisposable = CompositeDisposable()
 

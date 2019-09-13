@@ -121,7 +121,6 @@ dependencies {
     implementation libs.okhttp3ResponseEcho
     implementation libs.rxpermissions
 
-//    implementation libs.ffmpegTranscoder
      implementation project(':transcoder')
 
     implementation libs.parceler
@@ -129,8 +128,6 @@ dependencies {
 
     implementation libs.numberprogressbar
 
-    implementation 'org.jcodec:jcodec:0.2.3'
-    implementation 'org.jcodec:jcodec-android:0.2.3'
     implementation libs.androidFfmpeg
 }
 
