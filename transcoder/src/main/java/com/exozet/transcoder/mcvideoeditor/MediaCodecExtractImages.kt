@@ -393,7 +393,7 @@ class MediaCodecExtractImages {
                 Progress(
                     (decodeCount.toFloat() / totalFrame.toFloat() * 100).toInt(),
                     "total saved frame = $frameCounter",
-                    null,
+                    Uri.parse(outputPath),
                     System.currentTimeMillis() - startTime
                 )
             )

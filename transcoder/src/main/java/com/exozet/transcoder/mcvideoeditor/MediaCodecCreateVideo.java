@@ -9,7 +9,6 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
@@ -19,9 +18,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import io.reactivex.Flowable;
+
+import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
-import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.schedulers.Schedulers;
 
@@ -147,7 +147,7 @@ public class MediaCodecCreateVideo {
                 return;
             }
 
-            subscription.add(Flowable.fromIterable(frames)
+            subscription.add(Observable.fromIterable(frames)
                     .map(input -> {
                         return BitmapFactory.decodeFile(input.getAbsolutePath());
                     })
@@ -161,14 +161,14 @@ public class MediaCodecCreateVideo {
 
     private void encode(Bitmap bitmap, ObservableEmitter<Progress> emitter) {
 
-        if (this.cancelable.getCancel().get()) {
-            release();
-            mOutputFile.delete();
-            return;
-        }
+                if (cancelable.getCancel().get()) {
+                    release();
+                    mOutputFile.delete();
+                    return;
+                }
 
-            Progress progress =new Progress((int)((((float)frameNumber) / ((float)frames.size() - 1f)) * 100), null, Uri.parse(mOutputFile.getAbsolutePath()), System.currentTimeMillis() - startTime);
-            emitter.onNext(progress);
+                Progress progress =new Progress((int)((((float)frameNumber) / ((float)frames.size() - 1f)) * 100), null, Uri.parse(mOutputFile.getAbsolutePath()), System.currentTimeMillis() - startTime);
+                emitter.onNext(progress);
 
                 log(TAG, "Encoder started");
                 byte[] byteConvertFrame = getNV12(bitmap.getWidth(), bitmap.getHeight(), bitmap);
@@ -208,10 +208,10 @@ public class MediaCodecCreateVideo {
                     }
                 }
 
-        if (frameNumber >= frames.size()-1){
-            emitter.onComplete();
-            release();
-        }
+                if (frameNumber >= frames.size()-1){
+                    emitter.onComplete();
+                    release();
+                }
     }
 
     private void release() {
