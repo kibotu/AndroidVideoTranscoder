@@ -93,6 +93,8 @@ class DemoActivity : FragmentActivity() {
         cancel.onClick {
             dispose()
         }
+
+        (0 until 10).toList().subList(0,10)
     }
 
     override fun onDestroy() {
