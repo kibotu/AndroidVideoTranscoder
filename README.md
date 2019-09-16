@@ -9,7 +9,7 @@ Features
 
 [![Screenshot](screenshot.png)](screenshot.png)
 
-# How to use
+# How to use FFMpeg Part
 
 ### Extracting frames
 
@@ -48,6 +48,41 @@ Features
         )
         .addTo(subscription)
         
+# How to use MediaCodec Part
+
+### Extracting frames
+
+ 	 MediaCodecTranscoder.extractFramesFromVideo(
+                context = this,
+                frameTimes = times,
+                inputVideo = inputVideo,
+                id = "loremipsum",
+                outputDir = frameFolder,
+                photoQuality = 100
+            )
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { logv { "extractFramesFromVideo progress $it" }},
+                    { logv { "extracting frames failed ${it.message}" }}, 
+                    { logv { "extracting frames successfully completed" }}
+                ).addTo(subscription)
+        
+### Merging frames to create video
+
+    MediaCodecTranscoder.createVideoFromFrames(
+                frameFolder = frameFolder,
+                outputUri = outputVideo,
+                deleteFramesOnComplete = true
+            )
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    {logv { "createVideoFromFrames progress $it" }},
+                   	{ logv { "merging frames to create a video failed ${it.message}" }}, 
+                	{ logv { "video creation successfully completed" } }
+                ).addTo(subscription)
+        
 
 # How to install
 
@@ -65,7 +100,11 @@ Step 2. Add the dependency
 
 	dependencies {
 		implementation 'com.exozet:transcoder:{version}'
+		
+		//Need to add ffmpeg dependencies if want to use FFMpegTranscoder(tested version 1.1.7)
+		implementation 'nl.bravobit:android-ffmpeg:{version}'
 	}
+	
 
 ### License
 <pre>
