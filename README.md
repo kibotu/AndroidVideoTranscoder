@@ -13,41 +13,45 @@ Features
 
 ### Extracting frames
 
- 	FFMpegTranscoder.extractFramesFromVideo(
- 			context = application, 
- 			frameTimes = times, 
- 			inputVideo = inputVideo, 
- 			id = "12345", 
- 			outputDir = frameFolder
- 		)
-   		.subscribeOn(Schedulers.io())
-   		.observeOn(AndroidSchedulers.mainThread())
-   		.subscribe(
-        	{ logv { "extract frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
-	      	{ logv { "extracting frames failed ${it.message}" }}, 
-        	{ logv { "extracting frames successfully completed" } }
-        )
-        .addTo(subscription)
-        
+```kotlin
+FFMpegTranscoder.extractFramesFromVideo(
+		context = application, 
+		frameTimes = times, 
+		inputVideo = inputVideo, 
+		id = "12345", 
+		outputDir = frameFolder
+	)
+	.subscribeOn(Schedulers.io())
+	.observeOn(AndroidSchedulers.mainThread())
+	.subscribe(
+	{ logv { "extract frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
+	{ logv { "extracting frames failed ${it.message}" }}, 
+	{ logv { "extracting frames successfully completed" } }
+)
+.addTo(subscription)
+``` 
+
 ### Merging frames to create video
 
-    FFMpegTranscoder.createVideoFromFrames(
-        	context = application,
-        	frameFolder = frameFolder,
-        	outputUri = outputVideo,
-        	config = EncodingConfig(
-            	sourceFrameRate = 30 // every source image is a frame
-        	)
-      	)
-        .subscribeOn(Schedulers.io())
-        .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(
-        	{ logv { "merging frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
-	      	{ logv { "merging frames to create a video failed ${it.message}" }}, 
-        	{ logv { "video creation successfully completed" } }
-        )
-        .addTo(subscription)
-        
+```kotlin
+FFMpegTranscoder.createVideoFromFrames(
+	context = application,
+	frameFolder = frameFolder,
+	outputUri = outputVideo,
+	config = EncodingConfig(
+	sourceFrameRate = 30 // every source image is a frame
+	)
+)
+.subscribeOn(Schedulers.io())
+.observeOn(AndroidSchedulers.mainThread())
+.subscribe(
+	{ logv { "merging frames ${it.progress} ${it.message} ${(it.duration / 1000f).roundToInt()} s" } },
+	{ logv { "merging frames to create a video failed ${it.message}" }}, 
+	{ logv { "video creation successfully completed" } }
+)
+.addTo(subscription)
+``` 
+
 # How to use MediaCodec Part
 
 ### Extracting frames
