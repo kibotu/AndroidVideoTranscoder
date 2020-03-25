@@ -140,4 +140,4 @@ limitations under the License.
 
 [Jan Rabe](jan.rabe@exozet.com)
 
-[Ömür Kumru](https://github.com/orgs/exozet/people/omurkmr)
+[Ömür Kumru](https://github.com/omurkmr)
