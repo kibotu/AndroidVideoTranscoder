@@ -128,7 +128,7 @@ dependencies {
 
     implementation libs.numberprogressbar
 
-    implementation libs.androidFfmpeg
+    implementation libs.androidFfmpegNew
 }
 
 // region override support library version
