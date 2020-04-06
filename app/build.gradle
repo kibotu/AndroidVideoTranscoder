@@ -12,7 +12,7 @@ android {
     defaultConfig {
         multiDexEnabled true
         applicationId "com.exozet.videoeditor.demo"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion targetSdkVer
         versionCode 1
         versionName "1.0"
@@ -128,7 +128,8 @@ dependencies {
 
     implementation libs.numberprogressbar
 
-    implementation libs.androidFfmpegNew
+    implementation "com.arthenica:mobile-ffmpeg-full:4.3.1"
+
 }
 
 // region override support library version
