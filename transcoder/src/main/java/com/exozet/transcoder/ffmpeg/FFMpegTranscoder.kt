@@ -2,15 +2,16 @@ package com.exozet.transcoder.ffmpeg
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.IntRange
+import com.arthenica.mobileffmpeg.Config
+import com.arthenica.mobileffmpeg.FFmpeg
 import io.reactivex.Observable
-import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler
-import nl.bravobit.ffmpeg.FFmpeg
-import nl.bravobit.ffmpeg.FFtask
 import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
+
 
 object FFMpegTranscoder {
 
@@ -19,7 +20,7 @@ object FFMpegTranscoder {
      *
      * @param context application context
      */
-    fun isSupported(context: Context): Boolean = FFmpeg.getInstance(context).isSupported
+    fun isSupported(context: Context): Boolean = Config.getSupportedCameraIds(context).isNotEmpty()
 
     /**
      * @param context application context
@@ -30,10 +31,6 @@ object FFMpegTranscoder {
      * @param photoQuality quality of extracted frames - Effective range for JPEG is 2-31 with 31 being the worst quality
      */
     fun extractFramesFromVideo(context: Context, frameTimes: List<String>, inputVideo: Uri, id: String, outputDir: Uri?, @IntRange(from = 1, to = 31) photoQuality: Int = 5): Observable<Progress> {
-
-        val ffmpeg = FFmpeg.getInstance(context)
-
-        var task: FFtask? = null
 
         val internalStoragePath: String = context.filesDir.absolutePath
 
@@ -77,46 +74,52 @@ object FFMpegTranscoder {
                 "${localSavePath}image_%03d.jpg"
             )
 
-            task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+            Config.enableStatisticsCallback { newStatistics ->
+                percent.set(
+                    ceil((100.0 * newStatistics.videoFrameNumber / total)).coerceIn(
+                        0.0,
+                        100.0
+                    ).toInt()
+                )
+                emitter.onNext(
+                    Progress(
+                        uri = Uri.fromFile(file),
+                        message = "",
+                        progress = percent.get(),
+                        duration = System.currentTimeMillis() - startTime
+                    )
+                )
+            }
+            val rc: Int = FFmpeg.execute(cmd)
 
-                override fun onFailure(result: String?) {
-                    emitter.onError(Throwable(result))
-                    //delete failed process folder
-                    deleteFolder(localSavePath)
-                }
-
-                override fun onSuccess(result: String?) {
-                    emitter.onNext(Progress(uri = Uri.fromFile(file)))
-                }
-
-                override fun onProgress(progress: String?) {
-                    // the 2nd parameter is the currently finished frame index
-                    val currentFrame = progress?.split(" ")
-                        ?.filterNot { it.isBlank() }
-                        ?.take(2)
-                        ?.lastOrNull()
-                        ?.toIntOrNull()
-
-                    // therefore we can can compute the current progress
-                    if (currentFrame != null)
-                        percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
-
-                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onStart() {
-                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onFinish() {
-                    emitter.onNext(Progress(uri = Uri.fromFile(file), message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                    emitter.onComplete()
-                }
-            })
+            if (rc == Config.RETURN_CODE_SUCCESS) {
+                emitter.onNext(
+                    Progress(
+                        uri = Uri.fromFile(file),
+                        message = "Finished ${Arrays.toString(cmd)}",
+                        progress = percent.get(),
+                        duration = System.currentTimeMillis() - startTime
+                    )
+                )
+                emitter.onComplete()
+            } else if (rc == Config.RETURN_CODE_CANCEL) {
+                emitter.onError(Throwable(result))
+                //delete failed process folder
+                deleteFolder(localSavePath)
+            } else {
+                emitter.onError(
+                    Throwable(
+                        String.format(
+                            "Command execution failed with rc=%d and the output below.",
+                            rc
+                        )
+                    )
+                )
+                Config.printLastCommandOutput(Log.INFO)
+            }
 
         }.doOnDispose {
-            if (task?.killRunningProcess() == false)
-                task?.sendQuitSignal()
+            FFmpeg.cancel()
         }
     }
 
@@ -127,11 +130,7 @@ object FFMpegTranscoder {
      * @param inputVideo input video
      * @param outputUri output video
      */
-    fun transcode(context: Context, inputVideo: Uri, outputUri: Uri): Observable<Progress> {
-
-        val ffmpeg = FFmpeg.getInstance(context)
-
-        var task: FFtask? = null
+    fun transcode(inputVideo: Uri, outputUri: Uri): Observable<Progress> {
 
         return Observable.create<Progress> { emitter ->
 
@@ -156,7 +155,26 @@ object FFMpegTranscoder {
 
             }.toTypedArray()
 
-            task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+            Config.enableStatisticsCallback {
+                emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+            }
+            val rc: Int = FFmpeg.execute(cmd)
+
+            if (rc == Config.RETURN_CODE_SUCCESS) {
+                emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                emitter.onComplete()
+
+            } else if (rc == Config.RETURN_CODE_CANCEL) {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                //delete failed process folder
+                deleteFolder(outputUri.path!!)
+
+            } else {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                Config.printLastCommandOutput(Log.INFO)
+            }
+
+            /*task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
 
                 override fun onFailure(result: String?) {
                     emitter.onError(Throwable(result))
@@ -187,10 +205,9 @@ object FFMpegTranscoder {
                     emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
                     emitter.onComplete()
                 }
-            })
+            })*/
         }.doOnDispose {
-            if (task?.killRunningProcess() == false)
-                task?.sendQuitSignal()
+            FFmpeg.cancel()
         }
     }
 
@@ -203,12 +220,7 @@ object FFMpegTranscoder {
      * @param [EncodingConfig] Encoding configurations.
      * @param deleteFramesOnComplete removes image sequence directory after successful completion.
      */
-    fun createVideoFromFrames(context: Context, frameFolder: Uri, outputUri: Uri, config: EncodingConfig, deleteFramesOnComplete: Boolean = true): Observable<Progress> {
-
-        val ffmpeg = FFmpeg.getInstance(context)
-
-        var task: FFtask? = null
-
+    fun createVideoFromFrames(frameFolder: Uri, outputUri: Uri, config: EncodingConfig, deleteFramesOnComplete: Boolean = true): Observable<Progress> {
         return Observable.create<Progress> { emitter ->
 
             if (emitter.isDisposed) {
@@ -288,51 +300,33 @@ object FFMpegTranscoder {
 
             }.toTypedArray()
 
-            task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
+            Config.enableStatisticsCallback { newStatistics ->
+                percent.set(ceil((100.0 * newStatistics.videoFrameNumber / total)).coerceIn(0.0, 100.0).toInt())
+                emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+            }
+            val rc: Int = FFmpeg.execute(cmd)
 
-                override fun onFailure(result: String?) {
-                    emitter.onError(Throwable(result))
-                    //delete failed process folder
-                    deleteFolder(outputUri.path!!)
+            if (rc == Config.RETURN_CODE_SUCCESS) {
+                emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+
+                if (deleteFramesOnComplete) {
+                    val deleteStatus = deleteFolder(frameFolder.path!!)
+                    log("Delete temp frame save path status: $deleteStatus")
                 }
+                emitter.onComplete()
 
-                override fun onSuccess(result: String?) {
-                    emitter.onNext(Progress(uri = outputUri, message = result))
-                }
+            } else if (rc == Config.RETURN_CODE_CANCEL) {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                //delete failed process folder
+                deleteFolder(outputUri.path!!)
 
-                override fun onProgress(progress: String?) {
-                    // the 2nd parameter is the currently finished frame index
-                    val currentFrame = progress?.split(" ")
-                        ?.filterNot { it.isBlank() }
-                        ?.take(2)
-                        ?.lastOrNull()
-                        ?.toIntOrNull()
+            } else {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                Config.printLastCommandOutput(Log.INFO)
+            }
 
-                    // therefore we can can compute the current progress
-                    if (currentFrame != null)
-                        percent.set(ceil((100.0 * currentFrame / total)).coerceIn(0.0, 100.0).toInt())
-
-                    emitter.onNext(Progress(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onStart() {
-                    emitter.onNext(Progress(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onFinish() {
-                    emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-
-                    if (deleteFramesOnComplete) {
-                        val deleteStatus = deleteFolder(frameFolder.path!!)
-                        log("Delete temp frame save path status: $deleteStatus")
-                    }
-
-                    emitter.onComplete()
-                }
-            })
         }.doOnDispose {
-            if (task?.killRunningProcess() == false)
-                task?.sendQuitSignal()
+            FFmpeg.cancel()
         }
     }
 

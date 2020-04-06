@@ -5,7 +5,7 @@ Surprisingly fast on device video transcoding.
 Features
 
 - extracting images from video either ffmpeg or mediacodec
-- creating video from image seither ffmpeg or mediacodec
+- creating video from image either ffmpeg or mediacodec
 
 [![Screenshot](screenshot.png)](screenshot.png)
 
@@ -112,8 +112,8 @@ Step 2. Add the dependency
 dependencies {
 	implementation 'com.exozet:transcoder:{version}'
 
-	//Need to add ffmpeg dependencies if want to use FFMpegTranscoder(tested version 1.1.7)
-	implementation 'nl.bravobit:android-ffmpeg:{version}'
+	//Need to add ffmpeg dependencies if want to use FFMpegTranscoder(tested version 4.3.1.LTS)
+	implementation 'com.arthenica:mobile-ffmpeg-full-gpl:{version}'
 }
 ```
 

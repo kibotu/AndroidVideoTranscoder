@@ -100,9 +100,8 @@ class FFmpegActivity : AppCompatActivity() {
             }
 
 
-            //extractByFFMpeg(inputVideo,frameFolder)
-
-            extactByMediaCodec(times, inputVideo, frameFolder)
+            extractByFFMpeg(inputVideo,frameFolder)
+            //extactByMediaCodec(times, inputVideo, frameFolder)
 
         }
     }
@@ -110,11 +109,8 @@ class FFmpegActivity : AppCompatActivity() {
     private fun mergeFrames(frameFolder: Uri, outputVideo: Uri) {
 
         make_video.onClick {
-
-            //mergeByFFMpeg(frameFolder,outputVideo)
-
-            mergeByMediaCodec(frameFolder, outputVideo)
-
+            mergeByFFMpeg(frameFolder,outputVideo)
+            //mergeByMediaCodec(frameFolder, outputVideo)
         }
     }
 
@@ -127,7 +123,6 @@ class FFmpegActivity : AppCompatActivity() {
             output.text = ""
 
             FFMpegTranscoder.transcode(
-                context = this,
                 inputVideo = inputVideo,
                 outputUri = outputVideo
             )
@@ -191,7 +186,6 @@ class FFmpegActivity : AppCompatActivity() {
         output.text = ""
 
         FFMpegTranscoder.createVideoFromFrames(
-            context = this,
             frameFolder = frameFolder,
             outputUri = outputVideo,
             config = EncodingConfig(

@@ -67,8 +67,6 @@ class DemoActivity : FragmentActivity() {
 
             var progress: Progress? = null
 
-
-
             MediaCodecTranscoder.createVideoFromFrames(
                 frameFolder = frameFolder,
                 outputUri = outputVideo,

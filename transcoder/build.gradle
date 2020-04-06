@@ -74,7 +74,7 @@ dependencies {
     implementation libs.rx2java
     implementation libs.rx2Android
     implementation libs.rx2Kotlin
-    compileOnly libs.androidFfmpeg
+    compileOnly libs.androidFfmpegNew
 }
 
 configurations.all {
