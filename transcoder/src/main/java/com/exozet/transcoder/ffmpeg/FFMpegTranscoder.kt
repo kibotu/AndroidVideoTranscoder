@@ -90,6 +90,9 @@ object FFMpegTranscoder {
                     )
                 )
             }
+            Config.enableLogCallback {
+                    message -> log(message.text)
+            }
             val rc: Int = FFmpeg.execute(cmd)
 
             if (rc == Config.RETURN_CODE_SUCCESS) {
@@ -158,6 +161,9 @@ object FFMpegTranscoder {
             Config.enableStatisticsCallback {
                 emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
             }
+            Config.enableLogCallback {
+                    message -> log(message.text)
+            }
             val rc: Int = FFmpeg.execute(cmd)
 
             if (rc == Config.RETURN_CODE_SUCCESS) {
@@ -174,38 +180,6 @@ object FFMpegTranscoder {
                 Config.printLastCommandOutput(Log.INFO)
             }
 
-            /*task = ffmpeg.execute(cmd, object : ExecuteBinaryResponseHandler() {
-
-                override fun onFailure(result: String?) {
-                    emitter.onError(Throwable(result))
-                    //delete failed process folder
-                    deleteFolder(outputUri.path!!)
-                }
-
-                override fun onSuccess(result: String?) {
-                    emitter.onNext(Progress(uri = outputUri, message = result))
-                }
-
-                override fun onProgress(progress: String?) {
-
-                    // get total video duration by parsing 'progress', e.g.:
-                    // Duration: 00:01:03.35, start: 0.000000, bitrate: 4296 kb/s
-                    // check against time, e.g.:
-                    // frame=  165 fps= 10 q=29.0 size=    3584kB time=00:00:05.68 bitrate=5161.0kbits/s speed=0.343x
-                    // where time/duration = percent
-
-                    emitter.onNext(Progress(uri = outputUri, message = progress?.trimMargin(), progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onStart() {
-                    emitter.onNext(Progress(uri = outputUri, message = "Starting ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                }
-
-                override fun onFinish() {
-                    emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
-                    emitter.onComplete()
-                }
-            })*/
         }.doOnDispose {
             FFmpeg.cancel()
         }
@@ -303,6 +277,9 @@ object FFMpegTranscoder {
             Config.enableStatisticsCallback { newStatistics ->
                 percent.set(ceil((100.0 * newStatistics.videoFrameNumber / total)).coerceIn(0.0, 100.0).toInt())
                 emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+            }
+            Config.enableLogCallback {
+                    message -> log(message.text)
             }
             val rc: Int = FFmpeg.execute(cmd)
 
