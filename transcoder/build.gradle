@@ -74,7 +74,7 @@ dependencies {
     implementation libs.rx2java
     implementation libs.rx2Android
     implementation libs.rx2Kotlin
-    compileOnly "com.arthenica:mobile-ffmpeg-full:4.3.1"
+    compileOnly "com.arthenica:mobile-ffmpeg-full-gpl:4.3.1.LTS"
 }
 
 configurations.all {
