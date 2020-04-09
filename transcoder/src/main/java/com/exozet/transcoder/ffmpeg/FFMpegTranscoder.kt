@@ -268,7 +268,7 @@ object FFMpegTranscoder {
                     add("-preset"); add("${config.preset}")
                 }
 
-                add("-movflags"); add("+faststart")
+                //add("-movflags"); add("+faststart")
 
                 add("${outputUri.path}")
 
@@ -307,6 +307,120 @@ object FFMpegTranscoder {
         }
     }
 
+    /**
+     * FFMPEG Analysis and Filter
+     * # Analyze video, apply some filter to reduce weird effects with reflections
+     */
+    fun analyseAndFilter(context: Context, inputVideo: Uri): Observable<Progress> {
+
+        return Observable.create<Progress> { emitter ->
+
+            if (emitter.isDisposed) {
+                return@create
+            }
+
+            val percent = AtomicInteger()
+
+            val startTime = System.currentTimeMillis()
+
+            val transformsFile = getTransformsFile(context)
+
+            //ffmpeg -i <FILE> -threads 2 -vf "[in]deflicker,dejudder[p0];[p0]vidstabdetect=shakiness=10:accuracy=15[out]" -f null - &&
+
+            val cmd = mutableListOf<String>().apply {
+                add("-i"); add("${inputVideo.path}")
+                add("-threads"); add("${Runtime.getRuntime().availableProcessors()}")
+                add("-vf"); add("[in]deflicker,dejudder[p0];[p0]vidstabdetect=shakiness=10:accuracy=15:result=transforms.trf[out]")
+
+            }.toTypedArray()
+
+            val c = "-i ${inputVideo.path} -threads ${Runtime.getRuntime().availableProcessors()} -vf [in]deflicker,dejudder[p0];[p0]vidstabdetect=shakiness=10:accuracy=15:result=${transformsFile.path}[out] -f null -"
+
+            Config.enableStatisticsCallback {
+                emitter.onNext(Progress(uri = Uri.EMPTY, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+            }
+            Config.enableLogCallback {
+                    message -> Log.e("FFMpeg Debugger", message.text)
+            }
+            val rc: Int = FFmpeg.execute(c)
+
+            if (rc == Config.RETURN_CODE_SUCCESS) {
+                emitter.onNext(Progress(uri = Uri.EMPTY, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                emitter.onComplete()
+
+            } else if (rc == Config.RETURN_CODE_CANCEL) {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+
+            } else {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                Config.printLastCommandOutput(Log.INFO)
+            }
+
+        }.doOnDispose {
+            FFmpeg.cancel()
+        }
+    }
+
+    /**
+     * FFMPEG Stabilization
+     * # Stabilize and output as video
+     */
+    fun stabilize(context: Context, inputVideo: Uri, outputUri: Uri): Observable<Progress> {
+
+        return Observable.create<Progress> { emitter ->
+
+            if (emitter.isDisposed) {
+                return@create
+            }
+
+            val percent = AtomicInteger()
+
+            val startTime = System.currentTimeMillis()
+
+            val transformsFile = getTransformsFile(context)
+
+            //ffmpeg -y -i <FILE> -threads 2 -vf "[in]deflicker,dejudder[p0];[p0]vidstabtransform=smoothing=40:input="transforms.trf"[p1];[p1]fps=30[out]" ./output/temp.mp4 &&
+
+            val cmd = mutableListOf<String>().apply {
+                add("-y")
+                add("-i"); add("${inputVideo.path}")
+                add("-threads"); add("${Runtime.getRuntime().availableProcessors()}")
+                add("-vf"); add("[in]deflicker,dejudder[p0];[p0]vidstabtransform=smoothing=40:input=${transformsFile.path}[p1];[p1]fps=30[out]")
+                add("${outputUri.path}")
+
+            }.toTypedArray()
+
+
+            Config.enableStatisticsCallback {
+                emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+            }
+            Config.enableLogCallback {
+                    message -> Log.e("XXXXXX", message.text)
+            }
+            val rc: Int = FFmpeg.execute(cmd)
+
+            if (rc == Config.RETURN_CODE_SUCCESS) {
+                emitter.onNext(Progress(uri = outputUri, message = "Finished ${Arrays.toString(cmd)}", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
+                emitter.onComplete()
+
+            } else if (rc == Config.RETURN_CODE_CANCEL) {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                //delete failed process folder
+                deleteFolder(outputUri.path!!)
+
+            } else {
+                emitter.onError(Throwable(String.format("Command execution failed with rc=%d and the output below.", rc)))
+                Config.printLastCommandOutput(Log.INFO)
+            }
+
+        }.doOnDispose {
+            FFmpeg.cancel()
+        }
+    }
+
+    private fun getTransformsFile(context: Context): File {
+        return File(context.cacheDir, "transforms.trf")
+    }
 
     /**
      * Deletes directory path recursively.

@@ -1,136 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".FFmpegActivity">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".FFmpegActivity">
 
     <TextView
-            android:id="@+id/init_ffmpeg"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Init FFMpeg"
-            app:layout_constraintBottom_toTopOf="@+id/extract_frames"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_chainStyle="spread" />
+        android:id="@+id/init_ffmpeg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Init FFMpeg"
+        app:layout_constraintBottom_toTopOf="@+id/extract_frames"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="spread" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/extract_frames"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Extract Images"
-            app:layout_constraintBottom_toTopOf="@+id/make_video"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/init_ffmpeg" />
+        android:id="@+id/extract_frames"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Extract Images"
+        app:layout_constraintBottom_toTopOf="@+id/make_video"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/init_ffmpeg" />
 
     <com.daimajia.numberprogressbar.NumberProgressBar
-            android:id="@+id/extract_frames_progress"
-            style="@style/NumberProgressBar_Funny_Orange"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="64dp"
-            android:layout_marginEnd="64dp"
-            android:visibility="gone"
-            app:layout_constraintBottom_toTopOf="@id/make_video"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/extract_frames"
-            tools:visibility="visible" />
+        android:id="@+id/extract_frames_progress"
+        style="@style/NumberProgressBar_Funny_Orange"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
+        android:layout_marginEnd="64dp"
+        android:visibility="gone"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/extract_frames"
+        tools:visibility="visible" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/make_video"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Create Video From Frames"
-            app:layout_constraintBottom_toTopOf="@+id/transcode_video"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/extract_frames" />
+        android:id="@+id/make_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Create Video From Frames"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/extract_frames_progress" />
+
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/stabilize_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stabilize Video"
+        app:layout_constraintBottom_toTopOf="@+id/transcode_video"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/make_video" />
 
 
     <com.daimajia.numberprogressbar.NumberProgressBar
-            android:id="@+id/merge_frames_progress"
-            style="@style/NumberProgressBar_Funny_Orange"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="64dp"
-            android:layout_marginEnd="64dp"
-            android:visibility="gone"
-            app:layout_constraintBottom_toTopOf="@id/transcode_video"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/make_video"
-            tools:visibility="visible" />
+        android:id="@+id/merge_frames_progress"
+        style="@style/NumberProgressBar_Funny_Orange"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="64dp"
+        android:layout_marginEnd="64dp"
+        android:visibility="gone"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stabilize_video"
+        tools:visibility="visible" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/transcode_video"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Transcode"
-            app:layout_constraintBottom_toTopOf="@+id/stop_process"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/make_video" />
+        android:id="@+id/transcode_video"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Transcode"
+        android:layout_marginTop="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/merge_frames_progress" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/stop_process"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Stop Process"
-            app:layout_constraintBottom_toTopOf="@+id/delete_folder"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/transcode_video" />
+        android:id="@+id/stop_process"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop Process"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/transcode_video" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/delete_folder"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Delete Folder"
-            app:layout_constraintBottom_toTopOf="@+id/scrollContainer"
-            app:layout_constraintEnd_toStartOf="@id/delete_all"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/stop_process" />
+        android:id="@+id/delete_folder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Delete Folder"
+        app:layout_constraintEnd_toStartOf="@id/delete_all"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/stop_process" />
 
     <com.google.android.material.button.MaterialButton
-            android:id="@+id/delete_all"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Delete All"
-            app:layout_constraintBottom_toTopOf="@+id/scrollContainer"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toEndOf="@id/delete_folder"
-            app:layout_constraintTop_toBottomOf="@+id/stop_process" />
+        android:id="@+id/delete_all"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Delete All"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@id/delete_folder"
+        app:layout_constraintTop_toBottomOf="@+id/stop_process" />
 
     <androidx.core.widget.NestedScrollView
-            android:id="@+id/scrollContainer"
-            android:layout_width="0dp"
-            android:layout_height="300dp"
-            android:layout_marginStart="@dimen/activity_vertical_margin"
-            android:layout_marginEnd="@dimen/activity_vertical_margin"
-            android:clipToPadding="false"
-            android:paddingBottom="@dimen/activity_vertical_margin"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+        android:id="@+id/scrollContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="@dimen/activity_vertical_margin"
+        android:layout_marginEnd="@dimen/activity_vertical_margin"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:layout_marginTop="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/delete_all"
+        app:layout_constraintStart_toStartOf="parent">
 
         <TextView
-                android:id="@+id/output"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:textSize="8sp"
-                tools:text="@tools:sample/lorem/random" />
+            android:id="@+id/output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:textSize="8sp"
+            tools:text="@tools:sample/lorem/random" />
 
     </androidx.core.widget.NestedScrollView>
 

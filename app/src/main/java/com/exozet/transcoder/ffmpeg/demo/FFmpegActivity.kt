@@ -1,6 +1,7 @@
 package com.exozet.transcoder.ffmpeg.demo
 
 import android.Manifest
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -25,6 +26,7 @@ import net.kibotu.logger.Logger
 import net.kibotu.logger.Logger.logv
 import net.kibotu.logger.Logger.logw
 import net.kibotu.logger.TAG
+import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import kotlin.math.roundToInt
@@ -65,13 +67,16 @@ class FFmpegActivity : AppCompatActivity() {
 
         val frameFolder = "Download/process/".parseExternalStorageFile()
         val inputVideo = "Download/walkaround.mp4".parseExternalStorageFile()
-        val outputVideo = "Download/output_${System.currentTimeMillis()}.mp4".parseExternalStorageFile()
+        //val inputVideo = "Download/Test.mp4".parseExternalStorageFile()
+        val outputVideo = "Download/stabilizedOutput_${System.currentTimeMillis()}.mp4".parseExternalStorageFile()
 
         extractFrames(inputVideo, frameFolder)
 
         mergeFrames(frameFolder, outputVideo)
 
         transcode(inputVideo, outputVideo)
+
+        stabilize(inputVideo, outputVideo)
 
         stop_process.onClick {
             stopProcessing()
@@ -83,6 +88,57 @@ class FFmpegActivity : AppCompatActivity() {
 
         delete_all.onClick {
             logv { "delete all = ${FFMpegTranscoder.deleteAllProcessFiles(this)}" }
+        }
+    }
+
+    private fun stabilize(inputVideo: Uri, outputVideo: Uri) {
+
+        stabilize_video.onClick {
+
+            FFMpegTranscoder.analyseAndFilter(
+                context = this,
+                inputVideo = inputVideo
+            )
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+
+                    extract_frames_progress.show()
+                    extract_frames_progress.progress = it.progress
+
+                    logv { "Analyze $it" }
+
+                    output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+                }, {
+                    logv { "transcode fails ${it.message}" }
+                    it.printStackTrace()
+                }, {
+                    logv { "transcode on complete " }
+
+                    FFMpegTranscoder.stabilize(
+                        context = this,
+                        inputVideo = inputVideo,
+                        outputUri = outputVideo
+                    )
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe({
+
+                            extract_frames_progress.show()
+                            extract_frames_progress.progress = it.progress
+
+                            logv { "Stabilize $it" }
+
+                            output.text = "${(it.duration / 1000f).roundToInt()} s ${it.message?.trimMargin()}\n${output.text}"
+
+                        }, {
+                            logv { "transcode fails ${it.message}" }
+                            it.printStackTrace()
+                        }, { logv { "transcode on complete " } })
+                        .addTo(subscription)
+                })
+                .addTo(subscription)
         }
     }
 
@@ -100,7 +156,7 @@ class FFmpegActivity : AppCompatActivity() {
             }
 
 
-            extractByFFMpeg(inputVideo,frameFolder)
+            extractByFFMpeg(inputVideo,frameFolder)   //Uri.parse(copyAssetFileToCache("walkaround.mp4")!!.path)
             //extactByMediaCodec(times, inputVideo, frameFolder)
 
         }
@@ -305,4 +361,15 @@ class FFmpegActivity : AppCompatActivity() {
                 `is`?.close()
             }
         }
+}
+
+fun Context.copyAssetFileToCache(fileName: String): File? {
+    return try {
+        File(this.cacheDir, fileName).apply {
+            outputStream().use { cache -> assets.open(fileName).use { it.copyTo(cache) } }
+        }
+    } catch (e: IOException) {
+        Logger.e(e)
+        null
+    }
 }
