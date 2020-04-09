@@ -334,7 +334,7 @@ object FFMpegTranscoder {
 
             }.toTypedArray()
 
-            val c = "-i ${inputVideo.path} -threads ${Runtime.getRuntime().availableProcessors()} -vf [in]deflicker,dejudder[p0];[p0]vidstabdetect=shakiness=10:accuracy=15:result=${transformsFile.path}[out] -f null -"
+            val c = "-i ${inputVideo.path} -threads ${Runtime.getRuntime().availableProcessors()} -vf [in]deflicker,dejudder[p0];[p0]vidstabdetect=stepsize=32:shakiness=10:accuracy=15:result=${transformsFile.path}[out] -f null -"
 
             Config.enableStatisticsCallback {
                 emitter.onNext(Progress(uri = Uri.EMPTY, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
@@ -385,7 +385,7 @@ object FFMpegTranscoder {
                 add("-y")
                 add("-i"); add("${inputVideo.path}")
                 add("-threads"); add("${Runtime.getRuntime().availableProcessors()}")
-                add("-vf"); add("[in]deflicker,dejudder[p0];[p0]vidstabtransform=smoothing=40:input=${transformsFile.path}[p1];[p1]fps=30[out]")
+                add("-vf"); add("[in]deflicker,dejudder[p0];[p0]vidstabtransform=input=${transformsFile.path}:zoom=0:smoothing=10,unsharp=5:5:0.8:3:3:0.4[p1];[p1]fps=30[out]")
                 add("${outputUri.path}")
 
             }.toTypedArray()
