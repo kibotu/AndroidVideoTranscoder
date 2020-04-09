@@ -91,7 +91,7 @@ object FFMpegTranscoder {
                 )
             }
             Config.enableLogCallback {
-                    message -> log(message.text)
+                    message -> log("FFMpeg Extract Frames Logger: ${message.text}")
             }
             val rc: Int = FFmpeg.execute(cmd)
 
@@ -162,7 +162,7 @@ object FFMpegTranscoder {
                 emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
             }
             Config.enableLogCallback {
-                    message -> log(message.text)
+                    message -> log("FFMpeg Transcode Logger: ${message.text}")
             }
             val rc: Int = FFmpeg.execute(cmd)
 
@@ -340,7 +340,7 @@ object FFMpegTranscoder {
                 emitter.onNext(Progress(uri = Uri.EMPTY, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
             }
             Config.enableLogCallback {
-                    message -> Log.e("FFMpeg Debugger", message.text)
+                    message -> log("FFMpeg Analyze Logger: ${message.text}")
             }
             val rc: Int = FFmpeg.execute(c)
 
@@ -395,7 +395,7 @@ object FFMpegTranscoder {
                 emitter.onNext(Progress(uri = outputUri, message = "", progress = percent.get(), duration = System.currentTimeMillis() - startTime))
             }
             Config.enableLogCallback {
-                    message -> Log.e("XXXXXX", message.text)
+                    message -> log("FFMpeg Stabilize Logger: ${message.text}")
             }
             val rc: Int = FFmpeg.execute(cmd)
 
@@ -418,6 +418,9 @@ object FFMpegTranscoder {
         }
     }
 
+    /**
+     * Creates and gets transforms.trf file
+     */
     private fun getTransformsFile(context: Context): File {
         return File(context.cacheDir, "transforms.trf")
     }
